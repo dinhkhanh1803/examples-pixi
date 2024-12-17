@@ -12,17 +12,14 @@
     "build": "yarn webpack --mode development"
   },
   "dependencies": {
-    "@pixi/app": "7.4.2",
-    "@pixi/assets": "7.4.2",
-    "@pixi/constants": "7.4.2",
-    "@pixi/core": "7.4.2",
-    "@pixi/display": "7.4.2",
-    "@pixi/sprite": "7.4.2",
+    "@pixi/graphics-extras": "7.4.2",
+    "@pixi/math-extras": "7.4.2",
     "html-webpack-plugin": "^5.6.3",
-    "typescript": "^5.7.2"
+    "pixi.js": "7.4.2"
   },
   "devDependencies": {
     "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.2.0"
