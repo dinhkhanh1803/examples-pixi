@@ -1,71 +1,58 @@
-import { Application, Container, Rectangle, Sprite, Texture } from "pixi.js";
+import { Application, Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
 
 
 const app = new Application({ resizeTo: window, backgroundAlpha: 0 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 
-const container = new Container();
-app.stage.addChild(container);
+app.stop();
+
 
 // -----------------------------------------------
+Assets.load('https://pixijs.com/assets/spritesheet/monsters.json').then(onAssetsLoaded);
 
-class AlienSprite extends Sprite {
-    direction: number;
-    turningSpeed: number;
-    speed: number;
+// holder to store aliens
+const aliens: Sprite[] = [];
+const alienFrames = ['eggHead.png', 'flowerTop.png', 'helmlok.png', 'skully.png'];
+let count = 0;
 
-    constructor(texture: Texture) {
-        super(texture);
-        this.direction = Math.random() * Math.PI * 2;
-        this.turningSpeed = Math.random() - 0.8;
-        this.speed = 2 + Math.random() * 2;
+const alienContainer = new Container();
+alienContainer.x = 400;
+alienContainer.y = 300;
 
-        this.anchor.set(0.5);
-        this.scale.set(Math.random() * 0.5 + 0.5);
-        this.position.set(
-            Math.random() * app.screen.width,
-            Math.random() * app.screen.height
-        );
-        this.tint = Math.random() * 0xffffff;
+app.stage.eventMode = 'static';
+app.stage.addChild(alienContainer);
+
+function onAssetsLoaded() {
+    for (let i = 0; i < 100; i++) {
+        const frameName = alienFrames[i % 4];
+
+        const alien = Sprite.from(frameName);
+        alien.anchor.set(0.5);
+        alien.x = Math.random() * 800 - 400;
+        alien.y = Math.random() * 600 - 300;
+        alien.tint = Math.random() * 0xffffff;
+
+        aliens.push(alien);
+        alienContainer.addChild(alien);
     }
+    app.start();
 }
 
+app.stage.on('pointertap', onclick);
 
-const aliens: AlienSprite[] = [];
-const alienBoundsPadding = 100;
-const alienBounds = new Rectangle(
-    -alienBoundsPadding,
-    -alienBoundsPadding,
-    app.screen.width + alienBoundsPadding * 2,
-    app.screen.height + alienBoundsPadding * 2,
-);
-
-for (let i = 0; i < 20; i++) {
-    const alien = new AlienSprite(Texture.from('https://pixijs.com/assets/eggHead.png'));
-    aliens.push(alien);
-    app.stage.addChild(alien);
+function onclick() {
+    alienContainer.cacheAsBitmap = !alienContainer.cacheAsBitmap;
+    console.log(alienContainer.cacheAsBitmap);
 }
 
-// Ticker loop
 app.ticker.add(() => {
-    for (let i = 0; i < aliens.length; i++) {
+    for (let i = 0; i < 100; i++) {
         const alien = aliens[i];
-        alien.direction += alien.turningSpeed * 0.01;
-        alien.x += Math.sin(alien.direction) * alien.speed;
-        alien.y += Math.cos(alien.direction) * alien.speed;
-        alien.rotation = -alien.direction - Math.PI / 2;
-
-        // Wrap bounds logic
-        if (alien.x < alienBounds.x) {
-            alien.x += alienBounds.width;
-        } else if (alien.x > alienBounds.x + alienBounds.width) {
-            alien.x -= alienBounds.width;
-        }
-
-        if (alien.y < alienBounds.y) {
-            alien.y += alienBounds.height;
-        } else if (alien.y > alienBounds.y + alienBounds.height) {
-            alien.y -= alienBounds.height;
-        }
+        alien.rotation += 0.1;
     }
+    count += 0.01;
+
+    alienContainer.scale.x = Math.sin(count);
+    alienContainer.scale.y = Math.sin(count);
+    alienContainer.rotation += 0.01;
 });
