@@ -1,82 +1,30 @@
-import { Application, Assets, BLEND_MODES, Container, ParticleContainer, Rectangle, Renderer, Sprite, Texture } from "pixi.js";
+import { Application, Assets, SimplePlane, Sprite, Texture } from "pixi.js";
 
 const app = new Application({ resizeTo: window, backgroundAlpha: 0 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
-class DudeSprite extends Sprite {
-    direction: number;
-    turningSpeed: number;
-    speed: number;
 
-    constructor(texture: Texture) {
-        super(texture);
-        this.direction = Math.random() * Math.PI * 2;
-        this.turningSpeed = Math.random() - 0.8;
-        this.speed = 2 + Math.random() * 2;
+Assets.load('https://pixijs.com/assets/bg_grass.jpg').then((texture) => {
+    const plane = new SimplePlane(texture, 10, 10);
 
+    plane.x = 100;
+    plane.y = 100;
 
-        this.anchor.set(0.5);
-        this.scale.set(0.8 + Math.random() * 0.2);
+    app.stage.addChild(plane);
 
-        this.x = Math.floor(Math.random() * app.screen.width);
-        this.y = Math.floor(Math.random() * app.screen.height);
+    const buffer = plane.geometry.getBuffer('aVertexPosition');
 
-        this.tint = Math.random() * 0x808080;
-        this.blendMode = BLEND_MODES.ADD;
-    }
-}
+    let timer = 0;
 
-const background = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
-background.width = app.screen.width;
-background.height = app.screen.height;
-app.stage.addChild(background);
-
-const dudeArray: DudeSprite[] = [];
-const totaldudes = 20;
-
-
-// Khởi tạo các sprite và thông tin liên quan
-for (let i = 0; i < totaldudes; i++) {
-    const dude = new DudeSprite(Texture.from('https://pixijs.com/assets/flowerTop.png'));
-
-    dudeArray.push(dude);
-    app.stage.addChild(dude);
-
-}
-
-const dudeBoundsPadding = 100;
-
-const dudeBounds = new Rectangle(
-    -dudeBoundsPadding,
-    -dudeBoundsPadding,
-    app.screen.width + dudeBoundsPadding * 2,
-    app.screen.height + dudeBoundsPadding * 2,
-);
-
-app.ticker.add(() => {
-    // iterate through the dudes and update the positions
-    for (let i = 0; i < dudeArray.length; i++) {
-        const dude = dudeArray[i];
-
-        dude.direction += dude.turningSpeed * 0.01;
-        dude.x += Math.sin(dude.direction) * dude.speed;
-        dude.y += Math.cos(dude.direction) * dude.speed;
-        dude.rotation = -dude.direction - Math.PI / 2;
-
-        // wrap the dudes by testing their bounds...
-        if (dude.x < dudeBounds.x) {
-            dude.x += dudeBounds.width;
+    app.ticker.add(() => {
+        for (let i = 0; i < buffer.data.length; i++) {
+            buffer.data[i] += Math.sin(timer / 10 + i) * 0.5;
         }
-        else if (dude.x > dudeBounds.x + dudeBounds.width) {
-            dude.x -= dudeBounds.width;
-        }
-
-        if (dude.y < dudeBounds.y) {
-            dude.y += dudeBounds.height;
-        }
-        else if (dude.y > dudeBounds.y + dudeBounds.height) {
-            dude.y -= dudeBounds.height;
-        }
-    }
+        // for (let i = 0; i < buffer.data.length; i += 2) {
+        //     buffer.data[i] += Math.sin(timer / 10 + i / 20) * 1.5; // Thay đổi trên trục X
+        // }
+        buffer.update();
+        timer++;
+    });
 });
