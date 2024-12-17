@@ -1,58 +1,83 @@
-import { Application, Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
-
+import { Application, Assets, Container, ParticleContainer, Rectangle, Renderer, Sprite, Texture } from "pixi.js";
 
 const app = new Application({ resizeTo: window, backgroundAlpha: 0 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 
-app.stop();
+//---------------------------------------------------------
+class DudeSprite extends Sprite {
+    direction: number;
+    turningSpeed: number;
+    speed: number;
+    offset: number;
+    constructor(texture: Texture) {
+        super(texture);
+        this.direction = Math.random() * Math.PI * 2;
+        this.turningSpeed = Math.random() - 0.8;
+        this.speed = (2 + Math.random() * 2) * 0.2;
+        this.offset = Math.random() * 100;
 
+        this.anchor.set(0.5);
+        this.scale.set(0.8 + Math.random() * 0.2);
 
-// -----------------------------------------------
-Assets.load('https://pixijs.com/assets/spritesheet/monsters.json').then(onAssetsLoaded);
+        this.x = Math.random() * app.screen.width;
+        this.y = Math.random() * app.screen.height;
 
-// holder to store aliens
-const aliens: Sprite[] = [];
-const alienFrames = ['eggHead.png', 'flowerTop.png', 'helmlok.png', 'skully.png'];
-let count = 0;
-
-const alienContainer = new Container();
-alienContainer.x = 400;
-alienContainer.y = 300;
-
-app.stage.eventMode = 'static';
-app.stage.addChild(alienContainer);
-
-function onAssetsLoaded() {
-    for (let i = 0; i < 100; i++) {
-        const frameName = alienFrames[i % 4];
-
-        const alien = Sprite.from(frameName);
-        alien.anchor.set(0.5);
-        alien.x = Math.random() * 800 - 400;
-        alien.y = Math.random() * 600 - 300;
-        alien.tint = Math.random() * 0xffffff;
-
-        aliens.push(alien);
-        alienContainer.addChild(alien);
+        this.tint = Math.random() * 0x808080;
     }
-    app.start();
 }
 
-app.stage.on('pointertap', onclick);
+const sprite = new ParticleContainer(1000, {
+    scale: true,
+    position: true,
+    rotation: true,
+    uvs: true,
+    alpha: true,
+});
 
-function onclick() {
-    alienContainer.cacheAsBitmap = !alienContainer.cacheAsBitmap;
-    console.log(alienContainer.cacheAsBitmap);
+app.stage.addChild(sprite);
+
+const maggots: DudeSprite[] = [];
+
+const totalSprites = app.renderer instanceof Renderer ? 1000 : 100;
+
+for (let i = 0; i < totalSprites; i++) {
+    const dude = new DudeSprite(Texture.from('https://pixijs.com/assets/maggot_tiny.png'));
+    maggots.push(dude);
+    sprite.addChild(dude);
 }
+
+const dudeBoundsPadding = 100;
+const dudeBounds = new Rectangle(-dudeBoundsPadding, -dudeBoundsPadding, app.screen.width * 2, app.screen.height * 2);
+
+let tick = 0;
 
 app.ticker.add(() => {
-    for (let i = 0; i < 100; i++) {
-        const alien = aliens[i];
-        alien.rotation += 0.1;
-    }
-    count += 0.01;
+    // iterate through the sprites and update their position
+    for (let i = 0; i < maggots.length; i++) {
+        const dude = maggots[i];
+        dude.scale.y = 0.95 + Math.sin(tick + dude.offset) * 0.05;
+        dude.direction += dude.turningSpeed * 0.01;
+        dude.x += Math.sin(dude.direction) * (dude.speed * dude.scale.y);
+        dude.y += Math.cos(dude.direction) * (dude.speed * dude.scale.y);
+        dude.rotation = -dude.direction + Math.PI;
 
-    alienContainer.scale.x = Math.sin(count);
-    alienContainer.scale.y = Math.sin(count);
-    alienContainer.rotation += 0.01;
+        // wrap the maggots
+        if (dude.x < dudeBounds.x) {
+            dude.x += dudeBounds.width;
+        }
+        else if (dude.x > dudeBounds.x + dudeBounds.width) {
+            dude.x -= dudeBounds.width;
+        }
+
+        if (dude.y < dudeBounds.y) {
+            dude.y += dudeBounds.height;
+        }
+        else if (dude.y > dudeBounds.y + dudeBounds.height) {
+            dude.y -= dudeBounds.height;
+        }
+    }
+
+    // increment the ticker
+    tick += 0.1;
+
 });
