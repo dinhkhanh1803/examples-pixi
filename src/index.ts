@@ -4,15 +4,23 @@ const app = new Application({ width: 1024, height: 768, background: '#1099bb' })
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
+let isFlower = true;
+const texture = Texture.from('https://pixijs.com/assets/flowerTop.png');
+const secondTexture = Texture.from('https://pixijs.com/assets/eggHead.png');
 
-const buddy = Sprite.from('https://pixijs.com/assets/bunny.png');
+const charactor = new Sprite(texture);
 
-buddy.anchor.set(0.5);
-buddy.x = app.screen.width / 2;
-buddy.y = app.screen.height / 2;
+charactor.anchor.set(0.5);
+charactor.position.set(app.screen.width / 2, app.screen.height / 2);
+app.stage.addChild(charactor);
 
-app.stage.addChild(buddy);
+charactor.eventMode = 'static';
+charactor.cursor = 'pointer';
+charactor.on('pointerdown', () => {
+    isFlower = !isFlower;
+    charactor.texture = isFlower ? texture : secondTexture;
+});
 
-app.ticker.add((detal) => {
-    buddy.rotation += detal * 0.1;
+app.ticker.add((time) => {
+    charactor.rotation += 0.02 * time;
 })
