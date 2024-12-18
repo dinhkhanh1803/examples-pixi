@@ -5,26 +5,26 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-Assets.load('https://pixijs.com/assets/spritesheet/mc.json').then(() => {
-    const explosionTextures = [];
-    let i;
+Assets.load('https://pixijs.com/assets/spritesheet/fighter.json').then(() => {
+    const frames = [];
 
-    for (i = 0; i < 26; i++) {
-        const texture = Texture.from(`Explosion_Sequence_A ${i + 1}.png`);
+    for (let i = 0; i < 30; i++) {
+        const val = i < 10 ? `0${i}` : i;
 
-        explosionTextures.push(texture);
+        frames.push(Texture.from(`rollSequence00${val}.png`));
     }
+    const anim = new AnimatedSprite(frames);
 
-    for (i = 0; i < 50; i++) {
-        // create an explosion AnimatedSprite
-        const explosion = new AnimatedSprite(explosionTextures);
+    anim.x = app.screen.width / 2;
+    anim.y = app.screen.height / 2;
+    anim.anchor.set(0.5);
+    anim.animationSpeed = 0.5;
+    anim.play();
 
-        explosion.x = Math.random() * app.screen.width;
-        explosion.y = Math.random() * app.screen.height;
-        explosion.anchor.set(0.5);
-        explosion.rotation = Math.random() * Math.PI;
-        explosion.scale.set(0.75 + Math.random() * 0.5);
-        explosion.gotoAndPlay((Math.random() * 26) | 0);
-        app.stage.addChild(explosion);
-    }
+    app.stage.addChild(anim);
+
+    // Animate the rotation
+    app.ticker.add(() => {
+        anim.rotation += 0.01;
+    });
 });
