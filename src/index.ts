@@ -5,15 +5,23 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-Assets.load('https://pixijs.com/assets/bitmap-font/desyrel.xml').then(() => {
+Assets.addBundle('fonts', {
+    ChaChicle: 'https://pixijs.com/assets/webfont-loader/ChaChicle.ttf',
+    Lineal: 'https://pixijs.com/assets/webfont-loader/Lineal.otf',
+    'Dotrice Regular': 'https://pixijs.com/assets/webfont-loader/Dotrice-Regular.woff',
+    Crosterian: 'https://pixijs.com/assets/webfont-loader/Crosterian.woff2',
+});
 
-    const bitmapFontText = new BitmapText('bitmap fonts are supported!\nWoo yay!', {
-        fontName: 'Desyrel',
-        fontSize: 55,
-        align: 'left',
-    });
-    bitmapFontText.x = 50;
-    bitmapFontText.y = 200;
+Assets.loadBundle('fonts').then(() => {
+    const text1 = new Text('ChaChicle.ttf', new TextStyle({ fontFamily: 'ChaChicle', fontSize: 50 }));
+    const text2 = new Text('Lineal.otf', new TextStyle({ fontFamily: 'Lineal', fontSize: 50 }));
+    const text3 = new Text('Dotrice Regular.woff', new TextStyle({ fontFamily: 'Dotrice Regular', fontSize: 50 }));
+    const text4 = new Text('Crosterian.woff2', new TextStyle({ fontFamily: 'Crosterian', fontSize: 50 }));
 
-    app.stage.addChild(bitmapFontText);
+    text2.y = 150;
+    text3.y = 300;
+    text4.y = 450;
+
+    app.stage.addChild(text1, text2, text3, text4);
+
 });
