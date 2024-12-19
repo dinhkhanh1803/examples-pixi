@@ -5,26 +5,41 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-Assets.load('https://pixijs.com/assets/spritesheet/fighter.json').then(() => {
-    const frames = [];
+Assets.load('https://pixijs.com/assets/spritesheet/0123456789.json').then((spritesheet) => {
+    const textures = [];
+    let i;
 
-    for (let i = 0; i < 30; i++) {
-        const val = i < 10 ? `0${i}` : i;
+    for (i = 0; i < 10; i++) {
+        const framekey = `0123456789 ${i}.ase`;
+        const texture = Texture.from(framekey);
+        const time = spritesheet.data.frames[framekey].duration;
 
-        frames.push(Texture.from(`rollSequence00${val}.png`));
+        textures.push({ texture, time });
     }
-    const anim = new AnimatedSprite(frames);
 
-    anim.x = app.screen.width / 2;
-    anim.y = app.screen.height / 2;
-    anim.anchor.set(0.5);
-    anim.animationSpeed = 0.5;
-    anim.play();
+    const scaling = 4;
 
-    app.stage.addChild(anim);
+    // create a slow AnimatedSprite
+    const slow = new AnimatedSprite(textures);
 
-    // Animate the rotation
-    app.ticker.add(() => {
-        anim.rotation += 0.01;
-    });
+    slow.anchor.set(0.5);
+    slow.scale.set(scaling);
+    slow.animationSpeed = 0.5;
+    slow.x = (app.screen.width - slow.width) / 2;
+    slow.y = app.screen.height / 2;
+    slow.play();
+    app.stage.addChild(slow);
+
+    // create a fast AnimatedSprite
+    const fast = new AnimatedSprite(textures);
+
+    fast.anchor.set(0.5);
+    fast.scale.set(scaling);
+    fast.x = (app.screen.width + fast.width) / 2;
+    fast.y = app.screen.height / 2;
+    fast.play();
+    app.stage.addChild(fast);
+
+    // start animating
+    app.start();
 });
