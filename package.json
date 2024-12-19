@@ -12,6 +12,7 @@
     "build": "yarn webpack --mode development"
   },
   "dependencies": {
+    "@pixi/constants": "^7.4.2",
     "@pixi/graphics-extras": "^7.4.2",
     "@pixi/math-extras": "7.4.2",
     "html-webpack-plugin": "^5.6.3",
