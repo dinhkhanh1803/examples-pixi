@@ -1,116 +1,77 @@
-import { Application, Graphics, Polygon, TextStyle, Sprite, Texture, Text } from "pixi.js";
+import { Application, DisplayObject, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 
 
 const app = new Application({ width: 1024, height: 768, background: '#1099bb' });
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
-// Css style for icons
+const title = app.stage.addChild(
+    new Text(
+        `Move your mouse slowly over the boxes to
+    see the order of pointerenter, pointerleave,
+    pointerover, pointerout events on each target!`,
+        {
+            fontSize: 16,
+        },
+    ),
+);
 
-const yellowStar = Texture.from('https://pixijs.com/assets/yellowstar.png');
+const logs: string[] = [];
+const logText = app.stage.addChild(
+    new Text('', {
+        fontSize: 14,
+    }),
+);
 
-// Standard Sprite Button
-const starButton1 = new Sprite(yellowStar);
+logText.y = 80;
+logText.x = 2;
 
-starButton1.position.set(50, 200);
-starButton1.cursor = 'pointer';
-starButton1.eventMode = 'static';
+app.stage.name = 'stage';
 
-starButton1
-    .on('pointerdown', onClick, starButton1)
-    .on('pointerover', onPointerOver, starButton1)
-    .on('pointerout', onPointerOut, starButton1);
+// Mount outer black box
+const blackBox = app.stage.addChild(new Graphics().beginFill(0).drawRect(0, 0, 600, 400).endFill());
 
-// Custom Hitarea Button
-const starButton2 = new Sprite(yellowStar);
+blackBox.name = 'black box';
+blackBox.x = 400;
 
-starButton2.position.set(250, 200);
+// Mount white box inside the white one
+const whiteBox = blackBox.addChild(new Graphics().beginFill(0xffffff).drawRect(100, 100, 400, 200).endFill());
 
-// Create a hitarea that matches the sprite, which will be used for point
-// intersection
-starButton2.hitArea = new Polygon([
-    80, 0, 100, 50, 160, 55, 115, 95, 130, 150, 80, 120, 30, 150, 45, 95, 0, 55, 60, 50,
-]);
-starButton2.cursor = 'pointer';
-starButton2.eventMode = 'static';
+whiteBox.name = 'white box';
 
-starButton2
-    .on('pointerdown', onClick, starButton2)
-    .on('pointerover', onPointerOver, starButton2)
-    .on('pointerout', onPointerOut, starButton2);
+// Enable interactivity everywhere!
+app.stage.eventMode = 'static';
+app.stage.hitArea = app.screen;
+whiteBox.eventMode = 'static';
+blackBox.eventMode = 'static';
 
-// With Mask, No Hit Area
-const starButton3 = new Sprite(yellowStar);
+[app.stage, whiteBox, blackBox].forEach((object) => {
+    object.addEventListener('pointerenter', onEvent);
+    object.addEventListener('pointerleave', onEvent);
+    object.addEventListener('pointerover', onEvent);
+    object.addEventListener('pointerout', onEvent);
+});
 
-starButton3.position.set(450, 200);
-starButton3.cursor = 'pointer';
-starButton3.eventMode = 'static';
 
-const squareMask = new Graphics().beginFill(0xffffff).drawRect(starButton3.x, starButton3.y, 75, 200).endFill();
+function onEvent(e: FederatedPointerEvent) {
+    const type = e.type;
+    const targetName = (e.target as DisplayObject).name;
+    const currentTargetName = (e.currentTarget as DisplayObject).name;
 
-starButton3.mask = squareMask;
+    // Add event to top of logs
+    logs.push(`${currentTargetName} received ${type} event (target is ${targetName})`);
 
-starButton3
-    .on('pointerdown', onClick, starButton3)
-    .on('pointerover', onPointerOver, starButton3)
-    .on('pointerout', onPointerOut, starButton3);
+    if (currentTargetName === 'stage' || type === 'pointerenter' || type === 'pointerleave') {
+        logs.push('-----------------------------------------', '');
+    }
 
-// With a Mask and Hit Area
-// Hitareas ignore masks. You can still click on a button made in this way,
-// even from areas covered by a mask
-const starButton4 = new Sprite(yellowStar);
+    // Prevent logs from growing too long
+    if (logs.length > 30) {
+        while (logs.length > 30) {
+            logs.shift();
+        }
+    }
 
-starButton4.position.set(600, 200);
-
-const squareMask2 = new Graphics().beginFill(0xffffff).drawRect(starButton4.x, starButton4.y, 75, 200).endFill();
-
-starButton4.mask = squareMask2;
-
-// Again, hitarea for intersection checks
-starButton4.hitArea = new Polygon([
-    80, 0, 100, 50, 160, 55, 115, 95, 130, 150, 80, 120, 30, 150, 45, 95, 0, 55, 60, 50,
-]);
-starButton4.cursor = 'pointer';
-starButton4.eventMode = 'static';
-
-starButton4
-    .on('pointerdown', onClick, starButton4)
-    .on('pointerover', onPointerOver, starButton4)
-    .on('pointerout', onPointerOut, starButton4);
-
-const style = new TextStyle({ fill: '#ffffff' });
-
-const text1 = new Text('Standard', style);
-
-text1.x = starButton1.x + 25;
-text1.y = starButton1.y + 170;
-
-const text2 = new Text('Hit Area', style);
-
-text2.x = starButton2.x + 35;
-text2.y = starButton2.y + 170;
-
-const text3 = new Text('Mask', style);
-
-text3.x = starButton3.x + 10;
-text3.y = starButton3.y + 170;
-
-const text4 = new Text('Mask + Hit Area', style);
-
-text4.x = starButton4.x - 10;
-text4.y = starButton4.y + 170;
-
-// Add to stage
-app.stage.addChild(starButton2, starButton1, starButton3, starButton4, squareMask, squareMask2, text1, text2, text3, text4);
-
-function onClick(this: Sprite) {
-    this.tint = 0x333333;
-}
-
-function onPointerOver(this: Sprite) {
-    this.tint = 0x666666;
-}
-
-function onPointerOut(this: Sprite) {
-    this.tint = 0xffffff;
+    // Update logText
+    logText.text = logs.join('\n');
 }
