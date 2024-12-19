@@ -4,76 +4,92 @@ import '@pixi/graphics-extras';
 const app = new Application({ width: 1024, height: 768, background: '#1099bb' });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
+app.stage.eventMode = 'static';
 
+const bg = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
 
-const stageHeight = app.screen.height;
-const stageWidth = app.screen.width;
+bg.anchor.set(0.5);
 
-// Make sure stage covers the whole scene
-app.stage.hitArea = app.screen;
+bg.x = app.screen.width / 2;
+bg.y = app.screen.height / 2;
 
-// Make the slider
-const sliderWidth = 320;
-const slider = new Graphics().beginFill(0x272d37).drawRect(0, 0, sliderWidth, 4);
+app.stage.addChild(bg);
 
-slider.x = (stageWidth - sliderWidth) / 2;
-slider.y = stageHeight * 0.75;
+const container = new Container();
 
-// Draw the handle
-const handle = new Graphics().beginFill(0xffffff).drawCircle(0, 0, 8);
+container.x = app.screen.width / 2;
+container.y = app.screen.height / 2;
 
-handle.y = slider.height / 2;
-handle.x = sliderWidth / 2;
-handle.eventMode = 'static';
-handle.cursor = 'pointer';
+// add a bunch of sprites
+const bgFront = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
 
-handle.on('pointerdown', onDragStart).on('pointerup', onDragEnd).on('pointerupoutside', onDragEnd);
+bgFront.anchor.set(0.5);
 
-app.stage.addChild(slider);
-slider.addChild(handle);
+const light2 = Sprite.from('https://pixijs.com/assets/light_rotate_2.png');
 
+light2.anchor.set(0.5);
 
-const bunny = app.stage.addChild(Sprite.from('https://pixijs.com/assets/bunny.png'));
+const light1 = Sprite.from('https://pixijs.com/assets/light_rotate_1.png');
 
-bunny.texture.baseTexture.scaleMode = SCALE_MODES.NEAREST;
-bunny.scale.set(3);
-bunny.anchor.set(0.5);
-bunny.x = stageWidth / 2;
-bunny.y = stageHeight / 2;
+light1.anchor.set(0.5);
 
-// Add title
-const title = new Text('Drag the handle to change the scale of bunny.', {
-    fill: '#272d37',
-    fontFamily: 'Roboto',
-    fontSize: 20,
-    align: 'center',
+const panda = Sprite.from('https://pixijs.com/assets/panda.png');
+
+panda.anchor.set(0.5);
+
+container.addChild(bgFront, light2, light1, panda);
+
+app.stage.addChild(container);
+
+const thing = new Graphics();
+
+app.stage.addChild(thing);
+thing.x = app.screen.width / 2;
+thing.y = app.screen.height / 2;
+thing.lineStyle(0);
+
+container.mask = thing;
+
+let count = 0;
+
+app.stage.on('pointertap', () => {
+    if (!container.mask) {
+        container.mask = thing;
+    }
+    else {
+        container.mask = null;
+    }
 });
 
-title.roundPixels = true;
-title.x = stageWidth / 2;
-title.y = 40;
-title.anchor.set(0.5, 0);
-app.stage.addChild(title);
+const help = new Text('Click or tap to turn masking on / off.', {
+    fontFamily: 'Arial',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fill: 'white',
+});
 
-function onDragStart() {
-    app.stage.eventMode = 'static';
-    app.stage.addEventListener('pointermove', onDrag);
-}
+help.y = app.screen.height - 46;
+help.x = 200;
+app.stage.addChild(help);
 
-// Stop dragging feedback once the handle is released.
-function onDragEnd(e: FederatedPointerEvent) {
-    app.stage.eventMode = 'auto';
-    app.stage.removeEventListener('pointermove', onDrag);
-}
+app.ticker.add(() => {
+    bg.rotation += 0.01;
+    bgFront.rotation -= 0.01;
 
-// Update the handle's position & bunny's scale when the handle is moved.
-function onDrag(e: FederatedPointerEvent) {
-    const halfHandleWidth = handle.width / 2;
-    // Set handle y-position to match pointer, clamped to (4, screen.height - 4).
+    light1.rotation += 0.02;
+    light2.rotation += 0.01;
 
-    handle.x = Math.max(halfHandleWidth, Math.min(slider.toLocal(e.global).x, sliderWidth - halfHandleWidth));
-    // Normalize handle position between -1 and 1.
-    const t = 2 * (handle.x / sliderWidth - 0.5);
+    panda.scale.x = 1 + Math.sin(count) * 0.04;
+    panda.scale.y = 1 + Math.cos(count) * 0.04;
 
-    bunny.scale.set(3 * (1.1 + t));
-}
+    count += 0.1;
+
+    thing.clear();
+
+    thing.beginFill(0x8bc5ff, 0.4);
+    thing.moveTo(-120 + Math.sin(count) * 20, -100 + Math.cos(count) * 20);
+    thing.lineTo(120 + Math.cos(count) * 20, -100 + Math.sin(count) * 20);
+    thing.lineTo(120 + Math.sin(count) * 20, 100 + Math.cos(count) * 20);
+    thing.lineTo(-120 + Math.cos(count) * 20, 100 + Math.sin(count) * 20);
+    thing.rotation = count * 0.1;
+});
