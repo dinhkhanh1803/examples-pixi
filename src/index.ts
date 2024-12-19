@@ -4,24 +4,52 @@ const app = new Application({ width: 1024, height: 768, background: '#1099bb' })
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
+declare global {
+    interface Window {
+        WebFontConfig?: {
+            google: {
+                families: string[];
+            };
+            active?: () => void;
+        };
+    }
+}
+// Load them google fonts before starting...
+window.WebFontConfig = {
+    google: {
+        families: ['Snippet'],
+    },
+    active() {
+        init();
+    },
+};
 
-Assets.addBundle('fonts', {
-    ChaChicle: 'https://pixijs.com/assets/webfont-loader/ChaChicle.ttf',
-    Lineal: 'https://pixijs.com/assets/webfont-loader/Lineal.otf',
-    'Dotrice Regular': 'https://pixijs.com/assets/webfont-loader/Dotrice-Regular.woff',
-    Crosterian: 'https://pixijs.com/assets/webfont-loader/Crosterian.woff2',
-});
+/* eslint-disable */
+// include the web-font loader script
+(function() {
+    const wf = document.createElement('script');
+    wf.src = `${
+        document.location.protocol === 'https:' ? 'https' : 'http'
+        }://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js`;
+    wf.type = 'text/javascript';
+    wf.async = true;
+    const s = document.getElementsByTagName('script')[0];
+    if (s.parentNode) {
+        s.parentNode.insertBefore(wf, s);
+    } else {
+        console.error('No parentNode found for the script element.');
+    }
+})();
+/* eslint-enabled */
 
-Assets.loadBundle('fonts').then(() => {
-    const text1 = new Text('ChaChicle.ttf', new TextStyle({ fontFamily: 'ChaChicle', fontSize: 50 }));
-    const text2 = new Text('Lineal.otf', new TextStyle({ fontFamily: 'Lineal', fontSize: 50 }));
-    const text3 = new Text('Dotrice Regular.woff', new TextStyle({ fontFamily: 'Dotrice Regular', fontSize: 50 }));
-    const text4 = new Text('Crosterian.woff2', new TextStyle({ fontFamily: 'Crosterian', fontSize: 50 }));
-
-    text2.y = 150;
-    text3.y = 300;
-    text4.y = 450;
-
-    app.stage.addChild(text1, text2, text3, text4);
-
-});
+function init() {
+    // create some white text using the Snippet webfont
+    const textSample = new Text('PixiJS text using the\ncustom "Snippet" Webfont', {
+        fontFamily: 'Snippet',
+        fontSize: 50,
+        fill: 'white',
+        align: 'left',
+    });
+    textSample.position.set(50, 200);
+    app.stage.addChild(textSample);
+}
