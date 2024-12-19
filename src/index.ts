@@ -5,21 +5,41 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-// create a texture from an image path
-const texture = Texture.from('https://pixijs.com/assets/p2.jpeg');
+const button = new Graphics()
+    .beginFill(0x0, 0.5)
+    .drawRoundedRect(0, 0, 100, 100, 10)
+    .endFill()
+    .beginFill(0xffffff)
+    .moveTo(36, 30)
+    .lineTo(36, 70)
+    .lineTo(70, 50);
 
-const tilingSprite = new TilingSprite(texture, app.screen.width, app.screen.height);
+// Position the button
+button.x = (app.screen.width - button.width) / 2;
+button.y = (app.screen.height - button.height) / 2;
 
-app.stage.addChild(tilingSprite);
+// Enable interactivity on the button
+button.eventMode = 'static';
+button.cursor = 'pointer';
 
-let count = 0;
+// Add to the stage
+app.stage.addChild(button);
 
-app.ticker.add(() => {
-    count += 0.005;
+button.on('pointertap', onPlayVideo);
 
-    tilingSprite.tileScale.x = 2 + Math.sin(count);
-    tilingSprite.tileScale.y = 2 + Math.cos(count);
+function onPlayVideo() {
+    // Don't need the button anymore
+    button.destroy();
 
-    tilingSprite.tilePosition.x += 1;
-    tilingSprite.tilePosition.y += 1;
-});
+    // create a video texture from a path
+    const texture = Texture.from('https://pixijs.com/assets/video.mp4');
+
+    // create a new Sprite using the video texture (yes it's that easy)
+    const videoSprite = new Sprite(texture);
+
+    // Stetch the fullscreen
+    videoSprite.width = app.screen.width;
+    videoSprite.height = app.screen.height;
+
+    app.stage.addChild(videoSprite);
+}
