@@ -5,67 +5,100 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-const graphics = new Graphics();
+const sprite = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
 
-// Rectangle
-graphics.beginFill(0xde3249);
-graphics.drawRect(50, 50, 100, 100);
-graphics.endFill();
+const realPath = new Graphics();
 
-// Rectangle + line style 1
-graphics.lineStyle(2, 0xfeeb77, 1);
-graphics.beginFill(0x650a5a);
-graphics.drawRect(200, 50, 100, 100);
-graphics.endFill();
+realPath.lineStyle(2, 0xffffff, 1);
+realPath.moveTo(0, 0);
+realPath.lineTo(100, 200);
+realPath.lineTo(200, 200);
+realPath.lineTo(240, 100);
 
-// Circle
-graphics.lineStyle(0); // draw a circle, set the lineStyle to zero so the circle doesn't have an outline
-graphics.beginFill(0xde3249, 1);
-graphics.drawCircle(100, 250, 50);
-graphics.endFill();
+realPath.position.x = 50;
+realPath.position.y = 50;
 
-// Circle + line style 1
-graphics.lineStyle(2, 0xfeeb77, 1);
-graphics.beginFill(0x650a5a, 1);
-graphics.drawCircle(250, 250, 50);
-graphics.endFill();
+app.stage.addChild(realPath);
 
-// Ellipse + line style 2
-graphics.lineStyle(2, 0xffffff, 1);
-graphics.beginFill(0xaa4f08, 1);
-graphics.drawEllipse(600, 250, 80, 50);
-graphics.endFill();
+const bezier = new Graphics();
 
-// draw a shape
-graphics.beginFill(0xff3300);
-graphics.lineStyle(4, 0xffd900, 1);
-graphics.moveTo(50, 350);
-graphics.lineTo(250, 350);
-graphics.lineTo(100, 400);
-graphics.lineTo(50, 350);
-graphics.closePath();
-graphics.endFill();
+bezier.lineStyle(5, 0xaa0000, 1);
+bezier.bezierCurveTo(100, 200, 200, 200, 240, 100);
 
-// draw a rounded rectangle
-graphics.lineStyle(2, 0xff00ff, 1);
-graphics.beginFill(0x650a5a, 0.25);
-graphics.drawRoundedRect(50, 440, 100, 100, 16);
-graphics.endFill();
+bezier.position.x = 50;
+bezier.position.y = 50;
 
-// draw star
-graphics.lineStyle(2, 0xffffff);
-graphics.beginFill(0x35cc5a, 1);
-if (graphics.drawStar) {
-    graphics.drawStar(360, 370, 5, 50, 25);
-}
-graphics.endFill();
+app.stage.addChild(bezier);
 
-// draw polygon
-const path = [600, 370, 700, 460, 780, 420, 730, 570, 590, 520];
+const realPath2 = new Graphics();
 
-graphics.lineStyle(0);
-graphics.beginFill(0x3500fa, 1);
-graphics.drawPolygon(path);
-graphics.endFill();
+realPath2.lineStyle(2, 0xffffff, 1);
+realPath2.moveTo(0, 0);
+realPath2.lineTo(0, -100);
+realPath2.lineTo(150, 150);
+realPath2.lineTo(240, 100);
 
-app.stage.addChild(graphics);
+realPath2.position.x = 320;
+realPath2.position.y = 150;
+
+app.stage.addChild(realPath2);
+
+const bezier2 = new Graphics();
+
+bezier2.lineTextureStyle({ width: 10, texture: sprite.texture });
+bezier2.bezierCurveTo(0, -100, 150, 150, 240, 100);
+
+bezier2.position.x = 320;
+bezier2.position.y = 150;
+
+app.stage.addChild(bezier2);
+
+// // // ARC ////
+const arc = new Graphics();
+
+arc.lineStyle(5, 0xaa00bb, 1);
+arc.arc(600, 100, 50, Math.PI, 2 * Math.PI);
+
+app.stage.addChild(arc);
+
+
+
+// // // ARC 2 ////
+const arc2 = new Graphics();
+
+arc2.lineStyle(6, 0x3333dd, 1);
+arc2.arc(650, 270, 60, 2 * Math.PI, (3 * Math.PI) / 2);
+
+app.stage.addChild(arc2);
+
+// // // ARC 3 ////
+const arc3 = new Graphics();
+
+arc3.lineTextureStyle({ width: 20, texture: sprite.texture });
+arc3.arc(650, 420, 60, 2 * Math.PI, (2.5 * Math.PI) / 2);
+
+app.stage.addChild(arc3);
+
+// // / Hole ////
+const rectAndHole = new Graphics();
+
+rectAndHole.beginFill(0x00ff00);
+rectAndHole.drawRect(350, 350, 150, 150);
+rectAndHole.beginHole();
+rectAndHole.drawCircle(375, 375, 25);
+rectAndHole.drawCircle(425, 425, 25);
+rectAndHole.drawCircle(475, 475, 25);
+rectAndHole.endHole();
+rectAndHole.endFill();
+
+app.stage.addChild(rectAndHole);
+
+// // // Line Texture Style ////
+const beatifulRect = new Graphics();
+
+beatifulRect.lineTextureStyle({ width: 20, texture: sprite.texture });
+beatifulRect.beginFill(0xff0000);
+beatifulRect.drawRect(80, 350, 150, 150);
+beatifulRect.endFill();
+
+app.stage.addChild(beatifulRect);
