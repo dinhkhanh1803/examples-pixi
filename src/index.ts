@@ -5,41 +5,61 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
 
-const button = new Graphics()
-    .beginFill(0x0, 0.5)
-    .drawRoundedRect(0, 0, 100, 100, 10)
-    .endFill()
-    .beginFill(0xffffff)
-    .moveTo(36, 30)
-    .lineTo(36, 70)
-    .lineTo(70, 50);
+const basicText = new Text('Basic text in pixi');
+basicText.x = 100;
+basicText.y = 100;
+app.stage.addChild(basicText);
 
-// Position the button
-button.x = (app.screen.width - button.width) / 2;
-button.y = (app.screen.height - button.height) / 2;
 
-// Enable interactivity on the button
-button.eventMode = 'static';
-button.cursor = 'pointer';
 
-// Add to the stage
-app.stage.addChild(button);
+const style = new TextStyle({
+    fontFamily: 'Time New Roman',
+    fontSize: 36,
+    fontStyle: 'italic',
+    fontWeight: 'bold',
+    // fill: ['#ffffff', '#00ff99'], // gradient
+    fill: '#ffffff',
+    stroke: '#4a1850',
+    strokeThickness: 5,
+    dropShadow: true,
+    dropShadowColor: '#000000',
+    dropShadowBlur: 4,
+    dropShadowAngle: Math.PI / 6,
+    dropShadowDistance: 6,
+    wordWrap: true,
+    wordWrapWidth: 440,
+    lineJoin: 'round',
+});
 
-button.on('pointertap', onPlayVideo);
+const richText = new Text('Rich text with a lot of options and across multiple lines', style);
 
-function onPlayVideo() {
-    // Don't need the button anymore
-    button.destroy();
+richText.x = 50;
+richText.y = 220;
 
-    // create a video texture from a path
-    const texture = Texture.from('https://pixijs.com/assets/video.mp4');
+app.stage.addChild(richText);
 
-    // create a new Sprite using the video texture (yes it's that easy)
-    const videoSprite = new Sprite(texture);
 
-    // Stetch the fullscreen
-    videoSprite.width = app.screen.width;
-    videoSprite.height = app.screen.height;
+const skewStyle = new TextStyle({
+    fontFamily: 'Arial',
+    dropShadow: true,
+    dropShadowAlpha: 0.8,
+    dropShadowAngle: 2.1,
+    dropShadowBlur: 4,
+    dropShadowColor: '0x111111',
+    dropShadowDistance: 10,
+    fill: ['#ffffff'],
+    stroke: '#004620',
+    fontSize: 60,
+    fontWeight: 'lighter',
+    lineJoin: 'round',
+    strokeThickness: 12,
+});
 
-    app.stage.addChild(videoSprite);
-}
+const skewText = new Text('SKEW IS COOL', skewStyle);
+
+skewText.skew.set(0.65, -0.3);
+skewText.anchor.set(0.5, 0.5);
+skewText.x = 300;
+skewText.y = 480;
+
+app.stage.addChild(skewText);
