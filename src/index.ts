@@ -4,101 +4,102 @@ const app = new Application({ width: 1024, height: 768, background: '#1099bb' })
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
+app.stage.eventMode = 'static';
+app.stage.hitArea = app.screen;
 
-const sprite = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
+const graphics = new Graphics();
 
-const realPath = new Graphics();
+// set a fill and line style
+graphics.beginFill(0xff3300);
+graphics.lineStyle(10, 0xffd900, 1);
 
-realPath.lineStyle(2, 0xffffff, 1);
-realPath.moveTo(0, 0);
-realPath.lineTo(100, 200);
-realPath.lineTo(200, 200);
-realPath.lineTo(240, 100);
-
-realPath.position.x = 50;
-realPath.position.y = 50;
-
-app.stage.addChild(realPath);
-
-const bezier = new Graphics();
-
-bezier.lineStyle(5, 0xaa0000, 1);
-bezier.bezierCurveTo(100, 200, 200, 200, 240, 100);
-
-bezier.position.x = 50;
-bezier.position.y = 50;
-
-app.stage.addChild(bezier);
-
-const realPath2 = new Graphics();
-
-realPath2.lineStyle(2, 0xffffff, 1);
-realPath2.moveTo(0, 0);
-realPath2.lineTo(0, -100);
-realPath2.lineTo(150, 150);
-realPath2.lineTo(240, 100);
-
-realPath2.position.x = 320;
-realPath2.position.y = 150;
-
-app.stage.addChild(realPath2);
-
-const bezier2 = new Graphics();
-
-bezier2.lineTextureStyle({ width: 10, texture: sprite.texture });
-bezier2.bezierCurveTo(0, -100, 150, 150, 240, 100);
-
-bezier2.position.x = 320;
-bezier2.position.y = 150;
-
-app.stage.addChild(bezier2);
-
-// // // ARC ////
-const arc = new Graphics();
-
-arc.lineStyle(5, 0xaa00bb, 1);
-arc.arc(600, 100, 50, Math.PI, 2 * Math.PI);
-
-app.stage.addChild(arc);
+// draw a shape
+graphics.moveTo(50, 50);
+graphics.lineTo(250, 50);
+graphics.lineTo(100, 100);
+graphics.lineTo(250, 220);
+graphics.lineTo(50, 220);
+graphics.lineTo(50, 50);
+graphics.closePath();
+graphics.endFill();
 
 
+// set a fill and line style again
+graphics.lineStyle(10, 0xff0000, 0.8);
+graphics.beginFill(0xff700b, 1);
 
-// // // ARC 2 ////
-const arc2 = new Graphics();
+// draw a second shape
+graphics.moveTo(210, 300);
+graphics.lineTo(450, 320);
+graphics.lineTo(570, 350);
+graphics.quadraticCurveTo(600, 0, 480, 100);
+graphics.lineTo(330, 120);
+graphics.lineTo(410, 200);
+graphics.lineTo(210, 300);
+graphics.closePath();
+graphics.endFill();
 
-arc2.lineStyle(6, 0x3333dd, 1);
-arc2.arc(650, 270, 60, 2 * Math.PI, (3 * Math.PI) / 2);
 
-app.stage.addChild(arc2);
+// draw a rectangle
+graphics.lineStyle(2, 0x0000ff, 1);
+graphics.drawRect(50, 250, 100, 100);
 
-// // // ARC 3 ////
-const arc3 = new Graphics();
 
-arc3.lineTextureStyle({ width: 20, texture: sprite.texture });
-arc3.arc(650, 420, 60, 2 * Math.PI, (2.5 * Math.PI) / 2);
+// draw a circle
+graphics.lineStyle(0);
+graphics.beginFill(0xffff0b, 0.5);
+graphics.drawCircle(470, 200, 100);
+graphics.endFill();
 
-app.stage.addChild(arc3);
+graphics.lineStyle(20, 0x33ff00);
+graphics.moveTo(30, 30);
+graphics.lineTo(600, 300);
 
-// // / Hole ////
-const rectAndHole = new Graphics();
+app.stage.addChild(graphics);
 
-rectAndHole.beginFill(0x00ff00);
-rectAndHole.drawRect(350, 350, 150, 150);
-rectAndHole.beginHole();
-rectAndHole.drawCircle(375, 375, 25);
-rectAndHole.drawCircle(425, 425, 25);
-rectAndHole.drawCircle(475, 475, 25);
-rectAndHole.endHole();
-rectAndHole.endFill();
 
-app.stage.addChild(rectAndHole);
+// let's create a moving shape
+const thing = new Graphics();
 
-// // // Line Texture Style ////
-const beatifulRect = new Graphics();
+app.stage.addChild(thing);
+thing.x = 800 / 2;
+thing.y = 600 / 2;
 
-beatifulRect.lineTextureStyle({ width: 20, texture: sprite.texture });
-beatifulRect.beginFill(0xff0000);
-beatifulRect.drawRect(80, 350, 150, 150);
-beatifulRect.endFill();
+let count = 0;
+declare global {
+    interface Window {
+        app: Application;
+    }
+}
+// Just click on the stage to draw random lines
+window.app = app;
+app.stage.on('pointerdown', () => {
+    graphics.lineStyle(Math.random() * 30, Math.random() * 0xffffff, 1);
+    graphics.moveTo(Math.random() * 800, Math.random() * 600);
+    graphics.bezierCurveTo(
+        Math.random() * 800,
+        Math.random() * 600,
+        Math.random() * 800,
+        Math.random() * 600,
+        Math.random() * 800,
+        Math.random() * 600,
+    );
+});
 
-app.stage.addChild(beatifulRect);
+
+app.ticker.add(() => {
+    count += 0.1;
+
+    thing.clear();
+    thing.lineStyle(10, 0xff0000, 1);
+    thing.beginFill(0xffff00, 0.5);
+
+    thing.moveTo(-120 + Math.sin(count) * 20, -100 + Math.cos(count) * 20);
+    thing.lineTo(120 + Math.cos(count) * 20, -100 + Math.sin(count) * 20);
+    thing.lineTo(120 + Math.sin(count) * 20, 100 + Math.cos(count) * 20);
+    thing.lineTo(-120 + Math.cos(count) * 20, 100 + Math.sin(count) * 20);
+    thing.lineTo(-120 + Math.sin(count) * 20, -100 + Math.cos(count) * 20);
+    thing.closePath();
+
+    thing.rotation = count * 0.1;
+});
