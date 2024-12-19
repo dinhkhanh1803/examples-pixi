@@ -1,108 +1,63 @@
-import { Application, Sprite, Texture } from "pixi.js";
-import '@pixi/constants';
+import { Application, FederatedPointerEvent, SCALE_MODES, Sprite, Texture } from "pixi.js";
 
 const app = new Application({ width: 1024, height: 768, background: '#1099bb' });
 document.body.appendChild(app.view as HTMLCanvasElement);
 
 //---------------------------------------------------------
-interface CustomSprite extends Sprite {
-    isdown?: boolean;
-    isOver?: boolean;
+// create a texture from an image path
+const texture = Texture.from('https://pixijs.com/assets/bunny.png');
+
+// Scale mode for pixelation
+texture.baseTexture.scaleMode = SCALE_MODES.NEAREST;
+
+for (let i = 0; i < 10; i++) {
+    createBunny(Math.floor(Math.random() * app.screen.width), Math.floor(Math.random() * app.screen.height));
 }
-// create a background...
-const background = Sprite.from('https://pixijs.com/assets/bg_button.jpg');
 
-background.width = app.screen.width;
-background.height = app.screen.height;
+function createBunny(x: number, y: number) {
+    // create our little bunny friend..
+    const bunny = new Sprite(texture);
 
-// add background to stage...
-app.stage.addChild(background);
+    bunny.eventMode = 'static';
 
-// create some textures from an image path
-const textureButton = Texture.from('https://pixijs.com/assets/button.png');
-const textureButtonDown = Texture.from('https://pixijs.com/assets/button_down.png');
-const textureButtonOver = Texture.from('https://pixijs.com/assets/button_over.png');
+    bunny.cursor = 'pointer';
 
-const buttons = [];
+    bunny.anchor.set(0.5);
 
-const buttonPositions = [175, 75, 655, 75, 410, 325, 150, 465, 685, 445];
+    bunny.scale.set(3);
 
-for (let i = 0; i < 5; i++) {
-    const button = new Sprite(textureButton);
+    bunny.on('pointerdown', onDragStart, bunny);
 
-    button.anchor.set(0.5);
-    button.x = buttonPositions[i * 2];
-    button.y = buttonPositions[i * 2 + 1];
-
-    // make the button interactive...
-    button.eventMode = 'static';
-    button.cursor = 'pointer';
-
-    button
-        // Mouse & touch events are normalized into
-        // the pointer* events for handling different
-        // button events.
-        .on('pointerdown', onButtonDown)
-        .on('pointerup', onButtonUp)
-        .on('pointerupoutside', onButtonUp)
-        .on('pointerover', onButtonOver)
-        .on('pointerout', onButtonOut);
-
-    // Use mouse-only events
-    // .on('mousedown', onButtonDown)
-    // .on('mouseup', onButtonUp)
-    // .on('mouseupoutside', onButtonUp)
-    // .on('mouseover', onButtonOver)
-    // .on('mouseout', onButtonOut)
-
-    // Use touch-only events
-    // .on('touchstart', onButtonDown)
-    // .on('touchend', onButtonUp)
-    // .on('touchendoutside', onButtonUp)
+    bunny.x = x;
+    bunny.y = y;
 
     // add it to the stage
-    app.stage.addChild(button);
-
-    // add button to array
-    buttons.push(button);
+    app.stage.addChild(bunny);
 }
 
-// set some silly values...
-buttons[0].scale.set(1.2);
-buttons[2].rotation = Math.PI / 10;
-buttons[3].scale.set(0.8);
-buttons[4].scale.set(0.8, 1.2);
-buttons[4].rotation = Math.PI;
+let dragTarget: Sprite | null = null;
 
-function onButtonDown(this: CustomSprite) {
-    this.isdown = true;
-    this.texture = textureButtonDown;
-    this.alpha = 1;
-}
+app.stage.eventMode = 'static';
+app.stage.hitArea = app.screen;
+app.stage.on('pointerup', onDragEnd);
+app.stage.on('pointerupoutside', onDragEnd);
 
-function onButtonUp(this: CustomSprite) {
-    this.isdown = false;
-    if (this.isOver) {
-        this.texture = textureButtonOver;
-    }
-    else {
-        this.texture = textureButton;
+function onDragMove(event: FederatedPointerEvent) {
+    if (dragTarget) {
+        dragTarget.parent.toLocal(event.global, undefined, dragTarget.position);
     }
 }
 
-function onButtonOver(this: CustomSprite) {
-    this.isOver = true;
-    if (this.isdown) {
-        return;
-    }
-    this.texture = textureButtonOver;
+function onDragStart(this: Sprite) {
+    this.alpha = 0.5;
+    dragTarget = this;
+    app.stage.on('pointermove', onDragMove);
 }
 
-function onButtonOut(this: CustomSprite) {
-    this.isOver = false;
-    if (this.isdown) {
-        return;
+function onDragEnd() {
+    if (dragTarget) {
+        app.stage.off('pointermove', onDragMove);
+        dragTarget.alpha = 1;
+        dragTarget = null;
     }
-    this.texture = textureButton;
 }
-
