@@ -1,4 +1,4 @@
-import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope, Geometry, Shader, Mesh } from "pixi.js";
+import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope, Geometry, Shader, Mesh, Program } from "pixi.js";
 
 
 const app = new Application({ width: 1024, height: 768 });
@@ -15,11 +15,10 @@ const geometry = new Geometry()
             -100, // x, y
             100,
             100,
-            -100,
-            100,
         ], // x, y
         2,
     ) // the size of the attribute
+
     .addAttribute(
         'aUvs', // the attribute name
         [
@@ -29,14 +28,12 @@ const geometry = new Geometry()
             0, // u, v
             1,
             1,
-            0,
-            1,
         ], // u, v
         2,
-    ) // the size of the attribute
-    .addIndex([0, 1, 2, 0, 2, 3]);
+    ); // the size of the attribute
 
-const vertexSrc = `
+const program = Program.from(
+    `
 
     precision mediump float;
 
@@ -53,41 +50,55 @@ const vertexSrc = `
         vUvs = aUvs;
         gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
 
-    }`;
+    }`,
 
-const fragmentSrc = `
-
-    precision mediump float;
+    `precision mediump float;
 
     varying vec2 vUvs;
 
-    uniform sampler2D uSampler2;
-    uniform float time;
+    uniform sampler2D uSamplerTexture;
 
     void main() {
 
-        gl_FragColor = texture2D(uSampler2, vUvs + sin( (time + (vUvs.x) * 14.) ) * 0.1 );
-    }`;
+        gl_FragColor = texture2D(uSamplerTexture, vUvs);
+    }
 
-const uniforms = {
-    uSampler2: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg'),
-    time: 0,
-};
+`,
+);
 
+const triangle = new Mesh(
+    geometry,
+    new Shader(program, {
+        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg'),
+    }),
+);
 
-const shader = Shader.from(vertexSrc, fragmentSrc, uniforms);
+const triangle2 = new Mesh(
+    geometry,
+    new Shader(program, {
+        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_rotate.jpg'),
+    }),
+);
 
-const quad = new Mesh(geometry, shader);
+const triangle3 = new Mesh(
+    geometry,
+    new Shader(program, {
+        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_displacement.jpg'),
+    }),
+);
 
-quad.position.set(400, 300);
-quad.scale.set(2);
+triangle.position.set(400, 300);
+triangle.scale.set(2);
 
-app.stage.addChild(quad);
+triangle2.position.set(200, 100);
 
-// start the animation..
-// requestAnimationFrame(animate);
+triangle3.position.set(500, 400);
+triangle3.scale.set(3);
+
+app.stage.addChild(triangle3, triangle2, triangle);
 
 app.ticker.add((delta) => {
-    quad.rotation += 0.01;
-    quad.shader.uniforms.time += 0.1;
+    triangle.rotation += 0.01;
+    triangle2.rotation -= 0.01;
+    triangle3.rotation -= 0.005;
 });
