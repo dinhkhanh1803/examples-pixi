@@ -5,90 +5,39 @@ const app = new Application({ width: 1024, height: 768 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
 
-const stageSize = {
-    width: app.screen.width,
-    height: app.screen.height,
-};
+function createGradTexture() {
+    // adjust it if somehow you need better quality for very very big images
+    const quality = 256;
+    const canvas = document.createElement('canvas');
 
-// create two render textures... these dynamic textures will be used to draw the scene into itself
-let renderTexture = RenderTexture.create(stageSize);
-let renderTexture2 = RenderTexture.create(stageSize);
-const currentTexture = renderTexture;
+    canvas.width = quality;
+    canvas.height = 1;
 
-// create a new sprite that uses the render texture we created above
-const outputSprite = new Sprite(currentTexture);
+    const ctx = canvas.getContext('2d');
 
-// align the sprite
-outputSprite.x = 400;
-outputSprite.y = 300;
-outputSprite.anchor.set(0.5);
+    // use canvas2d API to create gradient
+    if (ctx) {
 
-// add to stage
-app.stage.addChild(outputSprite);
+        const grd = ctx.createLinearGradient(0, 0, quality, 0);
 
-const stuffContainer = new Container();
 
-stuffContainer.x = 400;
-stuffContainer.y = 300;
+        grd.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+        grd.addColorStop(0.3, 'cyan');
+        grd.addColorStop(0.7, 'red');
+        grd.addColorStop(1, 'green');
 
-app.stage.addChild(stuffContainer);
-
-// create an array of image ids..
-const fruits = [
-    'https://pixijs.com/assets/rt_object_01.png',
-    'https://pixijs.com/assets/rt_object_02.png',
-    'https://pixijs.com/assets/rt_object_03.png',
-    'https://pixijs.com/assets/rt_object_04.png',
-    'https://pixijs.com/assets/rt_object_05.png',
-    'https://pixijs.com/assets/rt_object_06.png',
-    'https://pixijs.com/assets/rt_object_07.png',
-    'https://pixijs.com/assets/rt_object_08.png',
-];
-
-// create an array of items
-const items: Sprite[] = [];
-
-// now create some items and randomly position them in the stuff container
-for (let i = 0; i < 20; i++) {
-    const item = Sprite.from(fruits[i % fruits.length]);
-
-    item.x = Math.random() * 400 - 200;
-    item.y = Math.random() * 400 - 200;
-    item.anchor.set(0.5);
-    stuffContainer.addChild(item);
-    items.push(item);
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, quality, 1);
+    }
+    return Texture.from(canvas);
 }
 
-// used for spinning!
-let count = 0;
+const gradTexture = createGradTexture();
 
-app.ticker.add(() => {
-    for (let i = 0; i < items.length; i++) {
-        // rotate each item
-        const item = items[i];
+const sprite = new Sprite(gradTexture);
 
-        item.rotation += 0.1;
-    }
-
-    count += 0.01;
-
-    // swap the buffers ...
-    const temp = renderTexture;
-
-    renderTexture = renderTexture2;
-    renderTexture2 = temp;
-
-    // set the new texture
-    outputSprite.texture = renderTexture;
-
-    // twist this up!
-    stuffContainer.rotation -= 0.01;
-    outputSprite.scale.set(1 + Math.sin(count) * 0.2);
-
-    // render the stage to the texture
-    // the 'true' clears the texture before the content is rendered
-    app.renderer.render(app.stage, {
-        renderTexture: renderTexture2,
-        clear: false,
-    });
-});
+sprite.position.set(100, 100);
+sprite.rotation = Math.PI / 8;
+sprite.width = 500;
+sprite.height = 50;
+app.stage.addChild(sprite);
