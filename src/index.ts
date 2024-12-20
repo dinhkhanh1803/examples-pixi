@@ -1,109 +1,41 @@
-import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES } from "pixi.js";
+import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope } from "pixi.js";
 
 
 const app = new Application({ width: 1024, height: 768 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
-Assets.load('https://pixijs.com/assets/perlin.jpg').then(onAssetsLoaded);
 
-let filter: Filter;
+let count = 0;
 
-const text = new Text('PixiJS', { fill: 0xffffff, fontSize: 80 });
+// build a rope!
+const ropeLength = 918 / 20;
 
-text.anchor.set(0.5, 0.5);
-text.position.set(app.renderer.screen.width / 2, app.renderer.screen.height / 2);
+const points: Point[] = [];
 
-app.stage.addChild(text);
-
-let totalTime = 0;
-
-// Fragment shader, in real use this would be much cleaner when loaded from a file
-// or embedded into the application as data resource.
-const fragment = `//Based on this: https://www.shadertoy.com/view/wtlSWX
-
-varying vec2 vTextureCoord;
-uniform sampler2D uSampler;
-uniform sampler2D noise;
-uniform float time;
-// Distance function. Just calculates the height (z) from x,y plane with really simple length check.
-// Its not exact as there could be shorter distances.
-vec2 dist(vec3 p)
-{
-  float id = floor(p.x)+floor(p.y);
-  id = mod(id, 2.);
-  float h = texture2D(noise, vec2(p.x, p.y)*0.04).r*5.1;
-  float h2 = texture2D(uSampler, vTextureCoord).r;
-  return vec2(h+h2-p.z,id);
-}
-//Light calculation.
-vec3 calclight(vec3 p, vec3 rd)
-{
-  vec2 eps = vec2( 0., 0.001);
-  vec3 n = normalize( vec3(
-    dist(p+eps.yxx).x - dist(p-eps.yxx).x,
-    dist(p+eps.xyx).x - dist(p-eps.xyx).x,
-    dist(p+eps.xxy).x - dist(p-eps.xxy).x
-  ));
-
-  vec3 d = vec3( max( 0., dot( -rd ,n)));
-
-  return d;
+for (let i = 0; i < 20; i++) {
+    points.push(new Point(i * ropeLength, 0));
 }
 
-void main()
-{
-  vec2 uv = vec2(vTextureCoord.x, 1.-vTextureCoord.y);
-  uv *=2.;
-  uv-=1.;
+const strip = new SimpleRope(Texture.from('https://pixijs.com/assets/snake.png'), points);
 
-  vec3 cam = vec3(0.,time -2., -3.);
-  vec3 target = vec3(sin(time)*0.1, time+cos(time)+2., 0. );
-  float fov = 2.2;
-  vec3 forward = normalize( target - cam);
-  vec3 up = normalize(cross( forward, vec3(0., 1.,0.)));
-  vec3 right = normalize( cross( up, forward));
-  vec3 raydir = normalize(vec3( uv.x *up + uv.y * right + fov*forward));
+strip.x = -459;
 
-  //Do the raymarch
-  vec3 col = vec3(0.);
-  float t = 0.;
-  for( int i = 0; i < 100; i++)
-  {
-    vec3 p = t * raydir + cam;
-    vec2 d = dist(p);
-    t+=d.x*0.5;//Jump only half of the distance as height function used is not really the best for heightmaps.
-    if(d.x < 0.001)
-    {
-      vec3 bc = d.y < 0.5 ? vec3(1.0, .8, 0.) :
-                vec3(0.8,0.0, 1.0);
-      col = vec3( 1.) * calclight(p, raydir) * (1. - t/150.) *bc;
-      break;
+const snakeContainer = new Container();
+
+snakeContainer.x = 400;
+snakeContainer.y = 300;
+
+snakeContainer.scale.set(800 / 1100);
+app.stage.addChild(snakeContainer);
+
+snakeContainer.addChild(strip);
+
+app.ticker.add(() => {
+    count += 0.1;// tốc độ của chuyển động.
+
+    // make the snake
+    for (let i = 0; i < points.length; i++) {
+        points[i].y = Math.sin(i * 0.5 + count) * 30;
+        points[i].x = i * ropeLength + Math.cos(i * 0.3 + count) * 20;
     }
-    if(t > 1000.)
-    {
-      break;
-    }
-  }
-  gl_FragColor = vec4(col, 1.);
-}
-`;
-
-function onAssetsLoaded(perlin: Texture) {
-    // Add perlin noise for filter, make sure it's wrapping and does not have mipmap.
-    perlin.baseTexture.wrapMode = WRAP_MODES.REPEAT;
-    perlin.baseTexture.mipmap = MIPMAP_MODES.OFF;
-
-    // Build the filter
-    filter = new Filter(undefined, fragment, {
-        time: 0.0,
-        noise: perlin,
-    });
-    app.stage.filterArea = app.renderer.screen;
-    app.stage.filters = [filter];
-
-    // Listen for animate update.
-    app.ticker.add((delta) => {
-        filter.uniforms.time = totalTime;
-        totalTime += delta / 60;
-    });
-}
+});
