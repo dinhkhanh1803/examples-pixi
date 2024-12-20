@@ -4,41 +4,38 @@ import '@pixi/graphics-extras';
 const app = new Application({ width: 1024, height: 768, background: '#1099bb' });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
+const bg = Sprite.from('https://pixijs.com/assets/pixi-filters/bg_depth_blur.jpg');
 
-// Inner radius of the circle
-const radius = 100;
+bg.width = app.screen.width;
+bg.height = app.screen.height;
+app.stage.addChild(bg);
 
-// The blur amount
-const blurSize = 32;
+const littleDudes = Sprite.from('https://pixijs.com/assets/pixi-filters/depth_blur_dudes.jpg');
 
-Assets.load('https://pixijs.com/assets/bg_grass.jpg').then((grassTexture) => {
-    const background = new Sprite(grassTexture);
+littleDudes.x = app.screen.width / 2 - 315;
+littleDudes.y = 200;
+app.stage.addChild(littleDudes);
 
-    app.stage.addChild(background);
-    background.width = app.screen.width;
-    background.height = app.screen.height;
+const littleRobot = Sprite.from('https://pixijs.com/assets/pixi-filters/depth_blur_moby.jpg');
 
-    const circle = new Graphics()
-        .beginFill(0xff0000)
-        .drawCircle(radius + blurSize, radius + blurSize, radius)
-        .endFill();
+littleRobot.x = app.screen.width / 2 - 200;
+littleRobot.y = 100;
+app.stage.addChild(littleRobot);
 
-    circle.filters = [new BlurFilter(blurSize)];
+const blurFilter1 = new BlurFilter();
+const blurFilter2 = new BlurFilter();
 
-    const bounds = new Rectangle(0, 0, (radius + blurSize) * 2, (radius + blurSize) * 2);
-    const texture = app.renderer.generateTexture(circle, {
-        resolution: 1, // Độ phân giải
-        region: bounds, // Khu vực cần lấy texture
-    });
-    const focus = new Sprite(texture);
+littleDudes.filters = [blurFilter1];
+littleRobot.filters = [blurFilter2];
 
-    app.stage.addChild(focus);
-    background.mask = focus;
+let count = 0;
 
-    app.stage.eventMode = 'static';
-    app.stage.hitArea = app.screen;
-    app.stage.on('pointermove', (event) => {
-        focus.position.x = event.global.x - focus.width / 2;
-        focus.position.y = event.global.y - focus.height / 2;
-    });
+app.ticker.add(() => {
+    count += 0.005;
+
+    const blurAmount = Math.cos(count);
+    const blurAmount2 = Math.sin(count);
+
+    blurFilter1.blur = 20 * blurAmount;
+    blurFilter2.blur = 20 * blurAmount2;
 });
