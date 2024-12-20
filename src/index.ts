@@ -6,38 +6,90 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
 app.stage.eventMode = 'static';
 
-const bg = Sprite.from('https://pixijs.com/assets/bg_plane.jpg');
+const bg = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
+
+bg.anchor.set(0.5);
+
+bg.x = app.screen.width / 2;
+bg.y = app.screen.height / 2;
 
 app.stage.addChild(bg);
 
-const cells = Sprite.from('https://pixijs.com/assets/cells.png');
+const container = new Container();
 
-cells.scale.set(1.5);
+container.x = app.screen.width / 2;
+container.y = app.screen.height / 2;
 
-const mask = Sprite.from('https://pixijs.com/assets/flowerTop.png');
+// add a bunch of sprites
+const bgFront = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
 
-mask.anchor.set(0.5);
-mask.x = 310;
-mask.y = 190;
+bgFront.anchor.set(0.5);
 
-cells.mask = mask;
+const light2 = Sprite.from('https://pixijs.com/assets/light_rotate_2.png');
 
-app.stage.addChild(mask, cells);
+light2.anchor.set(0.5);
 
-const target = new Point();
+const light1 = Sprite.from('https://pixijs.com/assets/light_rotate_1.png');
 
-reset();
+light1.anchor.set(0.5);
 
-function reset() {
-    target.x = Math.floor(Math.random() * 550);
-    target.y = Math.floor(Math.random() * 300);
-}
+const panda = Sprite.from('https://pixijs.com/assets/panda.png');
+
+panda.anchor.set(0.5);
+
+container.addChild(bgFront, light2, light1, panda);
+
+app.stage.addChild(container);
+
+const thing = new Graphics();
+
+app.stage.addChild(thing);
+thing.x = app.screen.width / 2;
+thing.y = app.screen.height / 2;
+thing.lineStyle(0);
+
+container.mask = thing;
+
+let count = 0;
+
+app.stage.on('pointertap', () => {
+    if (!container.mask) {
+        container.mask = thing;
+    }
+    else {
+        container.mask = null;
+    }
+});
+
+const help = new Text('Click or tap to turn masking on / off.', {
+    fontFamily: 'Arial',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fill: 'white',
+});
+
+help.y = app.screen.height - 46;
+help.x = 200;
+app.stage.addChild(help);
 
 app.ticker.add(() => {
-    mask.x += (target.x - mask.x) * 0.1;
-    mask.y += (target.y - mask.y) * 0.1;
+    bg.rotation += 0.01;
+    bgFront.rotation -= 0.01;
 
-    if (Math.abs(mask.x - target.x) < 1) {
-        reset();
-    }
+    light1.rotation += 0.02;
+    light2.rotation += 0.01;
+
+    panda.scale.x = 1 + Math.sin(count) * 0.04;
+    panda.scale.y = 1 + Math.cos(count) * 0.04;
+
+    count += 0.1;
+
+    thing.clear();
+
+    thing.beginFill(0x8bc5ff, 0.4);
+    thing.moveTo(-120 + Math.sin(count) * 20, -100 + Math.cos(count) * 20);
+    thing.lineTo(120 + Math.cos(count) * 20, -100 + Math.sin(count) * 20);
+    thing.lineTo(120 + Math.sin(count) * 20, 100 + Math.cos(count) * 20);
+    thing.lineTo(-120 + Math.cos(count) * 20, 100 + Math.sin(count) * 20);
+    thing.rotation = count * 0.1;
 });
