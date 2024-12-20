@@ -1,41 +1,86 @@
-import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter } from "pixi.js";
+import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter } from "pixi.js";
 import '@pixi/graphics-extras';
 
 const app = new Application({ width: 1024, height: 768, background: '#1099bb' });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
-const bg = Sprite.from('https://pixijs.com/assets/pixi-filters/bg_depth_blur.jpg');
+app.stage.eventMode = 'static';
+const bg = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
 
-bg.width = app.screen.width;
-bg.height = app.screen.height;
-app.stage.addChild(bg);
+bg.anchor.set(0.5);
 
-const littleDudes = Sprite.from('https://pixijs.com/assets/pixi-filters/depth_blur_dudes.jpg');
+bg.x = app.screen.width / 2;
+bg.y = app.screen.height / 2;
 
-littleDudes.x = app.screen.width / 2 - 315;
-littleDudes.y = 200;
-app.stage.addChild(littleDudes);
+const filter = new ColorMatrixFilter();
 
-const littleRobot = Sprite.from('https://pixijs.com/assets/pixi-filters/depth_blur_moby.jpg');
+const container = new Container();
 
-littleRobot.x = app.screen.width / 2 - 200;
-littleRobot.y = 100;
-app.stage.addChild(littleRobot);
+container.x = app.screen.width / 2;
+container.y = app.screen.height / 2;
 
-const blurFilter1 = new BlurFilter();
-const blurFilter2 = new BlurFilter();
+const bgFront = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
 
-littleDudes.filters = [blurFilter1];
-littleRobot.filters = [blurFilter2];
+bgFront.anchor.set(0.5);
+
+container.addChild(bgFront);
+
+const light2 = Sprite.from('https://pixijs.com/assets/light_rotate_2.png');
+
+light2.anchor.set(0.5);
+container.addChild(light2);
+
+const light1 = Sprite.from('https://pixijs.com/assets/light_rotate_1.png');
+
+light1.anchor.set(0.5);
+container.addChild(light1);
+
+const panda = Sprite.from('https://pixijs.com/assets/panda.png');
+
+panda.anchor.set(0.5);
+
+container.addChild(panda);
+
+app.stage.addChild(container);
+app.stage.filters = [filter];
 
 let count = 0;
+let enabled = true;
 
-app.ticker.add(() => {
-    count += 0.005;
+app.stage.on('pointertap', () => {
+    enabled = !enabled;
+    app.stage.filters = enabled ? [filter] : null;
+});
 
-    const blurAmount = Math.cos(count);
-    const blurAmount2 = Math.sin(count);
+const help = new Text('Click or tap to turn filters on / off.', {
+    fontFamily: 'Arial',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fill: 'white',
+});
 
-    blurFilter1.blur = 20 * blurAmount;
-    blurFilter2.blur = 20 * blurAmount2;
+help.y = app.screen.height - 25;
+help.x = 10;
+
+app.stage.addChild(help);
+
+app.ticker.add((delta) => {
+    bg.rotation += 0.01;
+    bgFront.rotation -= 0.01;
+    light1.rotation += 0.02;
+    light2.rotation += 0.01;
+
+    panda.scale.x = 1 + Math.sin(count) * 0.04;
+    panda.scale.y = 1 + Math.cos(count) * 0.04;
+
+    count += 0.1;
+
+    const { matrix } = filter;
+
+    matrix[1] = Math.sin(count) * 3;
+    matrix[2] = Math.cos(count);
+    matrix[3] = Math.cos(count) * 1.5;
+    matrix[4] = Math.sin(count / 3) * 2;
+    matrix[5] = Math.sin(count / 2);
+    matrix[6] = Math.sin(count / 4);
 });
