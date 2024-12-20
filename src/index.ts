@@ -10,11 +10,11 @@ const geometry = new Geometry()
         'aVertexPosition', // the attribute name
         [
             -100,
-            -50, // x, y
+            -100, // x, y
             100,
-            -50, // x, y
-            0.0,
-            100.0,
+            -100, // x, y
+            100,
+            100,
         ], // x, y
         2,
     ) // the size of the attribute
@@ -33,37 +33,60 @@ const geometry = new Geometry()
             1,
         ], // r, g, b
         3,
+    ) // the size of the attribute
+
+    .addAttribute(
+        'aUvs', // the attribute name
+        [
+            0,
+            0, // u, v
+            1,
+            0, // u, v
+            1,
+            1,
+        ], // u, v
+        2,
     ); // the size of the attribute
 
-const shader = Shader.from(
-    `
+const vertexSrc = `
 
     precision mediump float;
+
     attribute vec2 aVertexPosition;
     attribute vec3 aColor;
+    attribute vec2 aUvs;
 
     uniform mat3 translationMatrix;
     uniform mat3 projectionMatrix;
 
+    varying vec2 vUvs;
     varying vec3 vColor;
 
     void main() {
 
+        vUvs = aUvs;
         vColor = aColor;
         gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
 
-    }`,
+    }`;
 
-    `precision mediump float;
+const fragmentSrc = `
+
+    precision mediump float;
 
     varying vec3 vColor;
+    varying vec2 vUvs;
+
+    uniform sampler2D uSampler2;
 
     void main() {
-        gl_FragColor = vec4(vColor, 1.0);
-    }
 
-`,
-);
+        gl_FragColor = texture2D(uSampler2, vUvs) * vec4(vColor, 1.0);
+    }`;
+
+const uniforms = { uSampler2: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg') };
+
+const shader = Shader.from(vertexSrc, fragmentSrc, uniforms);
 
 const triangle = new Mesh(geometry, shader);
 
