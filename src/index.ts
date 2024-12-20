@@ -34,36 +34,8 @@ const geometry = new Geometry()
         ], // u, v
         2,
     ) // the size of the attribute
-    .addIndex([0, 1, 2, 0, 2, 3]);
-
-const geometry2 = new Geometry()
-    .addAttribute(
-        'aVertexPosition', // the attribute name
-        [
-            -100 + 100,
-            -100, // x, y
-            100 + 100,
-            -100, // x, y
-            100 + 100,
-            100,
-        ], // x, y
-        2,
-    ) // the size of the attribute
-    .addAttribute(
-        'aUvs', // the attribute name
-        [
-            0,
-            0, // u, v
-            1,
-            0, // u, v
-            1,
-            1,
-        ], // u, v
-        2,
-    ) // the size of the attribute
-    .addIndex([0, 1, 2]);
-
-const geometry3 = Geometry.merge([geometry, geometry2]);
+    .addIndex([0, 1, 2, 0, 2, 3])
+    .interleave();
 
 const shader = Shader.from(
     `
@@ -102,7 +74,7 @@ const shader = Shader.from(
     },
 );
 
-const quad = new Mesh(geometry3, shader);
+const quad = new Mesh(geometry, shader);
 
 quad.position.set(400, 300);
 quad.scale.set(2);
