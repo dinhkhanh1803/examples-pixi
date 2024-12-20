@@ -5,71 +5,151 @@ const app = new Application({ width: 1024, height: 768 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
 
-const geometry = new Geometry().addAttribute('aVPos', [-100, 0, 100, 0, 0, -150]);
+// Build geometry.
+const geometry = new Geometry()
+    .addAttribute(
+        'aVertexPosition', // the attribute name
+        [
+            -100,
+            -100, // x, y
+            100,
+            -100, // x, y
+            100,
+            100,
+            -100,
+            100,
+        ], // x, y
+        2,
+    ) // the size of the attribute
+    .addAttribute(
+        'aUvs', // the attribute name
+        [
+            0,
+            0, // u, v
+            1,
+            0, // u, v
+            1,
+            1,
+            0,
+            1,
+        ], // u, v
+        2,
+    ) // the size of the attribute
+    .addIndex([0, 1, 2, 0, 2, 3]);
 
-geometry.instanced = true;
-geometry.instanceCount = 5;
+const vertexSrc = `
 
-const positionSize = 2;
-const colorSize = 3;
-const buffer = new Float32Array(geometry.instanceCount * (positionSize + colorSize));
-
-geometry.addAttribute('aIPos', buffer, positionSize, false, TYPES.FLOAT, 4 * (positionSize + colorSize), 0, true);
-geometry.addAttribute(
-    'aICol',
-    buffer,
-    colorSize,
-    false,
-    TYPES.FLOAT,
-    4 * (positionSize + colorSize),
-    4 * positionSize,
-    true,
-);
-
-for (let i = 0; i < geometry.instanceCount; i++) {
-    const instanceOffset = i * (positionSize + colorSize);
-
-    buffer[instanceOffset + 0] = i * 80;
-    buffer[instanceOffset + 2] = Math.random();
-    buffer[instanceOffset + 3] = Math.random();
-    buffer[instanceOffset + 4] = Math.random();
-}
-
-const shader = Shader.from(
-    `
     precision mediump float;
-    attribute vec2 aVPos;
-    attribute vec2 aIPos;
-    attribute vec3 aICol;
+
+    attribute vec2 aVertexPosition;
+    attribute vec2 aUvs;
 
     uniform mat3 translationMatrix;
     uniform mat3 projectionMatrix;
 
-    varying vec3 vCol;
+    varying vec2 vUvs;
 
     void main() {
-        vCol = aICol;
 
-        gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVPos + aIPos, 1.0)).xy, 0.0, 1.0);
-    }`,
+        vUvs = aUvs;
+        gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
 
-    `precision mediump float;
+    }`;
 
-    varying vec3 vCol;
+const fragmentSrc = `
+//Based on this: https://www.shadertoy.com/view/wtlSWX
+precision mediump float;
 
-    void main() {
-        gl_FragColor = vec4(vCol, 1.0);
+varying vec2 vUvs;
+
+uniform sampler2D noise;
+uniform float time;
+
+// Distance function. Just calculates the height (z) from x,y plane with really simple length check.
+// Its not exact as there could be shorter distances.
+vec2 dist(vec3 p)
+{
+    float id = floor(p.x)+floor(p.y);
+    id = mod(id, 2.);
+    float h = texture2D(noise, vec2(p.x, p.y)*0.04).r*5.1;
+    return vec2(h-p.z,id);
+}
+
+//Light calculation.
+vec3 calclight(vec3 p, vec3 rd)
+{
+    vec2 eps = vec2( 0., 0.001);
+    vec3 n = normalize( vec3(
+    dist(p+eps.yxx).x - dist(p-eps.yxx).x,
+    dist(p+eps.xyx).x - dist(p-eps.xyx).x,
+    dist(p+eps.xxy).x - dist(p-eps.xxy).x
+    ));
+
+    vec3 d = vec3( max( 0., dot( -rd ,n)));
+
+    return d;
+}
+
+void main()
+{
+    vec2 uv = vec2(vUvs.x,1.-vUvs.y);
+    uv *=2.;
+    uv-=1.;
+
+    vec3 cam = vec3(0.,time -2., -3.);
+    vec3 target = vec3(sin(time)*0.1, time+cos(time)+2., 0. );
+    float fov = 2.2;
+    vec3 forward = normalize( target - cam);
+    vec3 up = normalize(cross( forward, vec3(0., 1.,0.)));
+    vec3 right = normalize( cross( up, forward));
+    vec3 raydir = normalize(vec3( uv.x *up + uv.y * right + fov*forward));
+
+    //Do the raymarch
+    vec3 col = vec3(0.);
+    float t = 0.;
+    for( int i = 0; i < 100; i++)
+    {
+    vec3 p = t * raydir + cam;
+    vec2 d = dist(p);
+    t+=d.x*0.5;//Jump only half of the distance as height function used is not really the best for heightmaps.
+    if(d.x < 0.001)
+    {
+        vec3 bc = d.y < 0.5 ? vec3(1.0, .8, 0.) :
+                vec3(0.8,0.0, 1.0);
+        col = vec3( 1.) * calclight(p, raydir) * (1. - t/150.) *bc;
+        break;
     }
+    if(t > 1000.)
+    {
+        break;
+    }
+    }
+    gl_FragColor = vec4(col, 1.);
+}`;
 
-`,
-);
+const uniforms = {
+    noise: Texture.from('https://pixijs.com/assets/perlin.jpg'),
+    time: 0,
+};
+// Make sure repeat wrap is used and no mipmapping.
 
-const triangles = new Mesh(geometry, shader);
+uniforms.noise.baseTexture.wrapMode = WRAP_MODES.REPEAT;
+uniforms.noise.baseTexture.mipmap = MIPMAP_MODES.OFF;
 
-triangles.position.set(400, 300);
+// Build the shader and the quad.
+const shader = Shader.from(vertexSrc, fragmentSrc, uniforms);
+const quad = new Mesh(geometry, shader);
 
-app.stage.addChild(triangles);
+quad.position.set(400, 300);
+quad.scale.set(2);
+
+app.stage.addChild(quad);
+
+// start the animation..
+let time = 0;
 
 app.ticker.add((delta) => {
-    triangles.rotation += 0.01;
+    time += 1 / 60;
+    quad.shader.uniforms.time = time;
+    quad.scale.set(Number(Math.cos(time)) + 2, Number(Math.sin(time * 0.7)) + 2);
 });
