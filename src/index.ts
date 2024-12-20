@@ -1,4 +1,4 @@
-import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope, Geometry, Shader, Mesh, Program, TYPES } from "pixi.js";
+import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope, Geometry, Shader, Mesh, Program, TYPES, RenderTexture } from "pixi.js";
 
 
 const app = new Application({ width: 1024, height: 768 });
@@ -10,14 +10,14 @@ const geometry = new Geometry()
     .addAttribute(
         'aVertexPosition', // the attribute name
         [
-            -100,
-            -100, // x, y
-            100,
-            -100, // x, y
-            100,
-            100,
-            -100,
-            100,
+            0,
+            0, // x, y
+            200,
+            0, // x, y
+            200,
+            200,
+            0,
+            200,
         ], // x, y
         2,
     ) // the size of the attribute
@@ -37,6 +37,7 @@ const geometry = new Geometry()
     ) // the size of the attribute
     .addIndex([0, 1, 2, 0, 2, 3]);
 
+// Vertex shader. Use same shader for all passes.
 const vertexSrc = `
 
     precision mediump float;
@@ -56,100 +57,179 @@ const vertexSrc = `
 
     }`;
 
-const fragmentSrc = `
-//Based on this: https://www.shadertoy.com/view/wtlSWX
+// Load a perlinnoise texture for one of the shaders.
+const perlinTexture = Texture.from('https://pixijs.com/assets/perlin.jpg');
+
+// First pass, generates a grid.
+const fragmentGridSrc = `
 precision mediump float;
-
 varying vec2 vUvs;
-
-uniform sampler2D noise;
-uniform float time;
-
-// Distance function. Just calculates the height (z) from x,y plane with really simple length check.
-// Its not exact as there could be shorter distances.
-vec2 dist(vec3 p)
-{
-    float id = floor(p.x)+floor(p.y);
-    id = mod(id, 2.);
-    float h = texture2D(noise, vec2(p.x, p.y)*0.04).r*5.1;
-    return vec2(h-p.z,id);
-}
-
-//Light calculation.
-vec3 calclight(vec3 p, vec3 rd)
-{
-    vec2 eps = vec2( 0., 0.001);
-    vec3 n = normalize( vec3(
-    dist(p+eps.yxx).x - dist(p-eps.yxx).x,
-    dist(p+eps.xyx).x - dist(p-eps.xyx).x,
-    dist(p+eps.xxy).x - dist(p-eps.xxy).x
-    ));
-
-    vec3 d = vec3( max( 0., dot( -rd ,n)));
-
-    return d;
-}
+uniform float zoom;
 
 void main()
 {
-    vec2 uv = vec2(vUvs.x,1.-vUvs.y);
-    uv *=2.;
-    uv-=1.;
+    //Generate a simple grid.
+    //Offset uv so that center is 0,0 and edges are -1,1
+    vec2 uv = (vUvs-vec2(0.5))*2.0;
+    vec2 gUv = floor(uv*zoom);
+    vec4 color1 = vec4(0.8, 0.8, 0.8, 1.0);
+    vec4 color2 = vec4(0.4, 0.4, 0.4, 1.0);
+    vec4 outColor = mod(gUv.x + gUv.y, 2.) < 0.5 ? color1 : color2;
+    gl_FragColor = outColor;
 
-    vec3 cam = vec3(0.,time -2., -3.);
-    vec3 target = vec3(sin(time)*0.1, time+cos(time)+2., 0. );
-    float fov = 2.2;
-    vec3 forward = normalize( target - cam);
-    vec3 up = normalize(cross( forward, vec3(0., 1.,0.)));
-    vec3 right = normalize( cross( up, forward));
-    vec3 raydir = normalize(vec3( uv.x *up + uv.y * right + fov*forward));
-
-    //Do the raymarch
-    vec3 col = vec3(0.);
-    float t = 0.;
-    for( int i = 0; i < 100; i++)
-    {
-    vec3 p = t * raydir + cam;
-    vec2 d = dist(p);
-    t+=d.x*0.5;//Jump only half of the distance as height function used is not really the best for heightmaps.
-    if(d.x < 0.001)
-    {
-        vec3 bc = d.y < 0.5 ? vec3(1.0, .8, 0.) :
-                vec3(0.8,0.0, 1.0);
-        col = vec3( 1.) * calclight(p, raydir) * (1. - t/150.) *bc;
-        break;
-    }
-    if(t > 1000.)
-    {
-        break;
-    }
-    }
-    gl_FragColor = vec4(col, 1.);
 }`;
 
-const uniforms = {
-    noise: Texture.from('https://pixijs.com/assets/perlin.jpg'),
+const gridUniforms = {
+    zoom: 10,
+};
+const gridShader = Shader.from(vertexSrc, fragmentGridSrc, gridUniforms);
+// Sharing textures and meshes is possible.
+// But for simplicity each pass has its own output texture and mesh in this example.
+const gridTexture = RenderTexture.create({ width: 200, height: 200 });
+const gridQuad = new Mesh(geometry, gridShader);
+const gridContainer = new Container();
+
+gridContainer.addChild(gridQuad);
+
+// Second pass. Takes grid as input and makes it ripple.
+const fragmentRippleSrc = `
+precision mediump float;
+varying vec2 vUvs;
+uniform float amount;
+uniform float phase;
+uniform sampler2D texIn;
+
+void main()
+{
+    //Generate a simple grid.
+    vec2 uv = vUvs;
+    //Calculate distance from center
+    float distance = length( uv - vec2(0.5));
+    vec4 color = texture2D(texIn, uv);
+    color.rgb *= sin(distance*25.0+phase) * amount+1.;
+    gl_FragColor = color;
+}`;
+const rippleUniforms = {
+    amount: 0.5,
+    phase: 0,
+    texIn: gridTexture,
+};
+const rippleShader = Shader.from(vertexSrc, fragmentRippleSrc, rippleUniforms);
+const rippleTexture = RenderTexture.create({ width: 200, height: 200 });
+const rippleQuad = new Mesh(geometry, rippleShader);
+const rippleContainer = new Container();
+
+rippleContainer.addChild(rippleQuad);
+
+// Second effect. Generates a filtered noise.
+const fragmentNoiseSrc = `
+precision mediump float;
+varying vec2 vUvs;
+uniform float limit;
+uniform sampler2D noise;
+
+void main()
+{
+    float color = texture2D(noise, vUvs).r;
+    color = step(limit, color);
+    gl_FragColor = vec4(color);
+}`;
+const noiseUniforms = {
+    limit: 0.5,
+    noise: perlinTexture,
+};
+const noiseShader = Shader.from(vertexSrc, fragmentNoiseSrc, noiseUniforms);
+const noiseTexture = RenderTexture.create({ width: 200, height: 200 });
+const noiseQuad = new Mesh(geometry, noiseShader);
+const noiseContainer = new Container();
+
+noiseContainer.addChild(noiseQuad);
+
+// Third effect
+const fragmentWaveSrc = `
+precision mediump float;
+varying vec2 vUvs;
+uniform float amplitude;
+uniform float time;
+
+void main()
+{
+    //Offset uv so that center is 0,0 and edges are -1,1
+    vec2 uv = (vUvs-vec2(0.5))*2.0;
+
+    vec3 outColor = vec3(0.);
+
+    //Simple wavefunctions inversed and with small offsets.
+    outColor += 5./length(uv.y*200. - 50.0*sin( uv.x*0.25+ time*0.25)*amplitude);
+    outColor += 4./length(uv.y*300. - 100.0*sin(uv.x*0.5+time*0.5)*amplitude*1.2);
+    outColor += 3./length(uv.y*400. - 150.0*sin(uv.x*0.75+time*0.75)*amplitude*1.4);
+    outColor += 2./length(uv.y*500. - 200.0*sin(uv.x+time)*amplitude*1.6);
+
+    gl_FragColor = vec4(outColor,1.0);
+}`;
+const waveUniforms = {
+    amplitude: 0.75,
     time: 0,
 };
-// Make sure repeat wrap is used and no mipmapping.
+const waveShader = Shader.from(vertexSrc, fragmentWaveSrc, waveUniforms);
+const waveTexture = RenderTexture.create({ width: 200, height: 200 });
+const waveQuad = new Mesh(geometry, waveShader);
+const waveContainer = new Container();
 
-uniforms.noise.baseTexture.wrapMode = WRAP_MODES.REPEAT;
-uniforms.noise.baseTexture.mipmap = MIPMAP_MODES.OFF;
+waveContainer.addChild(waveQuad);
 
-// Build the shader and the quad.
-const shader = Shader.from(vertexSrc, fragmentSrc, uniforms);
-const quad = new Mesh(geometry, shader);
+// Final combination pass
+const fragmentCombineSrc = `
+precision mediump float;
+varying vec2 vUvs;
 
-quad.position.set(400, 300);
-quad.scale.set(2);
+uniform sampler2D texRipple;
+uniform sampler2D texNoise;
+uniform sampler2D texWave;
 
-app.stage.addChild(quad);
+void main()
+{
+    //Read color from all
+    vec4 ripple = texture2D(texRipple, vUvs);
+    vec4 noise = texture2D(texNoise, vUvs);
+    vec4 wave = texture2D(texWave, vUvs);
+
+    gl_FragColor = mix(ripple, wave,noise.r);
+}`;
+const combineUniforms = {
+    texRipple: rippleTexture,
+    texNoise: noiseTexture,
+    texWave: waveTexture,
+};
+const combineShader = Shader.from(vertexSrc, fragmentCombineSrc, combineUniforms);
+const combineQuad = new Mesh(geometry, combineShader);
+
+gridContainer.position.set(10, 10);
+rippleContainer.position.set(220, 10);
+noiseContainer.position.set(10, 220);
+waveContainer.position.set(10, 430);
+combineQuad.position.set(430, 220);
+
+// Add all phases to stage so all the phases can be seen separately.
+app.stage.addChild(gridContainer);
+app.stage.addChild(rippleContainer);
+app.stage.addChild(noiseContainer);
+app.stage.addChild(waveContainer);
+app.stage.addChild(combineQuad);
 
 // start the animation..
 let time = 0;
 
 app.ticker.add((delta) => {
     time += 1 / 60;
-    quad.shader.uniforms.time = time;
-    quad.scale.set(Number(Math.cos(time)) + 2, Number(Math.sin(time * 0.7)) + 2);
+    // gridQuad.shader.uniforms.zoom = Math.sin(time)*5+10;
+    rippleQuad.shader.uniforms.phase = -time;
+    waveQuad.shader.uniforms.time = time;
+    noiseQuad.shader.uniforms.limit = Math.sin(time * 0.5) * 0.35 + 0.5;
+
+    // Render the passes to get textures.
+    app.renderer.render(gridQuad, { renderTexture: gridTexture });
+    app.renderer.render(rippleQuad, { renderTexture: rippleTexture });
+    app.renderer.render(noiseQuad, { renderTexture: noiseTexture });
+    app.renderer.render(waveQuad, { renderTexture: waveTexture });
 });
