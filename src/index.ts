@@ -15,9 +15,8 @@ const geometry = new Geometry()
             -100, // x, y
             100,
             100,
-        ], // x, y
-        2,
-    ) // the size of the attribute
+        ],
+    ) // x, y
 
     .addAttribute(
         'aUvs', // the attribute name
@@ -28,11 +27,10 @@ const geometry = new Geometry()
             0, // u, v
             1,
             1,
-        ], // u, v
-        2,
-    ); // the size of the attribute
+        ],
+    ); // u, v
 
-const program = Program.from(
+const shader = Shader.from(
     `
 
     precision mediump float;
@@ -56,49 +54,71 @@ const program = Program.from(
 
     varying vec2 vUvs;
 
-    uniform sampler2D uSamplerTexture;
+    uniform sampler2D uSampler2;
 
     void main() {
 
-        gl_FragColor = texture2D(uSamplerTexture, vUvs);
+        gl_FragColor = texture2D(uSampler2, vUvs);
     }
 
 `,
+    {
+        uSampler2: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg'),
+    },
 );
 
-const triangle = new Mesh(
-    geometry,
-    new Shader(program, {
-        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg'),
-    }),
+const shader2 = Shader.from(
+    `
+
+    precision mediump float;
+
+    attribute vec2 aVertexPosition;
+    attribute vec2 aUvs;
+
+    uniform mat3 translationMatrix;
+    uniform mat3 projectionMatrix;
+
+    varying vec2 vUvs;
+
+    void main() {
+
+        vUvs = aUvs;
+        gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
+
+    }`,
+
+    `precision mediump float;
+
+    varying vec2 vUvs;
+
+    uniform sampler2D uSampler2;
+
+    void main() {
+
+        gl_FragColor = texture2D(uSampler2, vUvs);
+        gl_FragColor.r += (abs(sin(gl_FragCoord.x * 0.06)) * 0.5) * 2.;
+        gl_FragColor.g += (abs(cos(gl_FragCoord.y * 0.06)) * 0.5) * 2.;
+    }
+
+`,
+    {
+        uSampler2: Texture.from('https://pixijs.com/assets/bg_scene_rotate.jpg'),
+    },
 );
 
-const triangle2 = new Mesh(
-    geometry,
-    new Shader(program, {
-        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_rotate.jpg'),
-    }),
-);
+const triangle = new Mesh(geometry, shader);
 
-const triangle3 = new Mesh(
-    geometry,
-    new Shader(program, {
-        uSamplerTexture: Texture.from('https://pixijs.com/assets/bg_displacement.jpg'),
-    }),
-);
+const triangle2 = new Mesh(geometry, shader2);
 
 triangle.position.set(400, 300);
 triangle.scale.set(2);
 
-triangle2.position.set(200, 100);
+triangle2.position.set(500, 400);
+triangle2.scale.set(3);
 
-triangle3.position.set(500, 400);
-triangle3.scale.set(3);
-
-app.stage.addChild(triangle3, triangle2, triangle);
+app.stage.addChild(triangle2, triangle);
 
 app.ticker.add((delta) => {
     triangle.rotation += 0.01;
-    triangle2.rotation -= 0.01;
-    triangle3.rotation -= 0.005;
+    triangle2.rotation -= 0.005;
 });
