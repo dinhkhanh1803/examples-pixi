@@ -9,30 +9,29 @@ document.body.appendChild(app.view as HTMLCanvasElement);
 Assets.add({ alias: 'flowerTop', src: 'https://pixijs.com/assets/flowerTop.png' });
 Assets.add({ alias: 'eggHead', src: 'https://pixijs.com/assets/eggHead.png' });
 
-// Load the assets and get a resolved promise once both are loaded
-const texturesPromise = Assets.load(['flowerTop', 'eggHead']); // => Promise<{flowerTop: Texture, eggHead: Texture}>
+// Allow the assets to load in the background
+Assets.backgroundLoad(['flowerTop', 'eggHead']);
 
-// Load the assets directly with Assets.load
-// const texturesPromise = Assets.load({
-//     flowerTop: 'https://pixijs.com/assets/flowerTop.png',
-//     eggHead: 'https://pixijs.com/assets/eggHead.png'
-// });
 
-// When the promise resolves, we have the texture!
-texturesPromise.then((textures) => {
-    // create a new Sprite from the resolved loaded Textures
+// If the background load hasn't loaded this asset yet, calling load forces this asset to load now.
+Assets.load('eggHead').then((texture) => {
+    // auxiliar flag for toggling the texture
+    let isEggHead = true;
 
-    const flower = Sprite.from(textures.flowerTop);
+    // create a new Sprite from the resolved loaded texture
+    const character = new Sprite(texture);
 
-    flower.anchor.set(0.5);
-    flower.x = app.screen.width * 0.25;
-    flower.y = app.screen.height / 2;
-    app.stage.addChild(flower);
+    character.anchor.set(0.5);
+    character.x = app.screen.width / 2;
+    character.y = app.screen.height / 2;
+    character.eventMode = 'static';
+    character.cursor = 'pointer';
 
-    const egg = Sprite.from(textures.eggHead);
+    app.stage.addChild(character);
 
-    egg.anchor.set(0.5);
-    egg.x = app.screen.width * 0.75;
-    egg.y = app.screen.height / 2;
-    app.stage.addChild(egg);
+    character.on('pointertap', async () => {
+        isEggHead = !isEggHead;
+        // These promise are already resolved in the cache.
+        character.texture = await Assets.load(isEggHead ? 'eggHead' : 'flowerTop');
+    });
 });
