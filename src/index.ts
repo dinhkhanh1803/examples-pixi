@@ -4,20 +4,18 @@ import { Application, Container, DisplayObject, EventBoundary, FederatedPointerE
 const app = new Application({ width: 1024, height: 768 });
 document.body.appendChild(app.view as HTMLCanvasElement);
 //---------------------------------------------------------
-// Start loading right away and create a promise
-const texturePromise = Assets.load('https://pixijs.com/assets/bunny.png');
+async function init() {
+    try {
+        const texture = await Assets.load('https://pixijs.com/assets/bunny.png');
+        const bunny = Sprite.from(texture);
+        bunny.anchor.set(0.5);
+        bunny.x = app.screen.width / 2;
+        bunny.y = app.screen.height / 2;
+        app.stage.addChild(bunny);
+    } catch (error) {
+        console.error('Error loading texture:', error);
+    }
+}
 
-// When the promise resolves, we have the texture!
-texturePromise.then((resolvedTexture) => {
-    // create a new Sprite from the resolved loaded Texture
-    const bunny = Sprite.from(resolvedTexture);
-
-    // center the sprite's anchor point
-    bunny.anchor.set(0.5);
-
-    // move the sprite to the center of the screen
-    bunny.x = app.screen.width / 2;
-    bunny.y = app.screen.height / 2;
-
-    app.stage.addChild(bunny);
-});
+// Call that async function
+init();
