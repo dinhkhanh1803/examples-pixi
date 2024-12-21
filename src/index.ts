@@ -7,172 +7,401 @@ const app = new Application({ view, background: 0x1099bb, resizeTo: window });
 
 document.body.appendChild(canvas);
 //---------------------------------------------------------
-class PhysicsSprite extends Sprite {
-    acceleration: Point;
-    mass: number;
 
-    constructor(texture: Texture, mass: number) {
-        super(texture);
+/* ---------------------------------------
+ Spinner 1. Square with radial completion.
+ -------------------------------------- */
+const generateSpinner1 = (position: Point) => {
+    const container = new Container();
 
-        this.acceleration = new Point(0, 0);  // Gia tốc mặc định là (0,0)
-        this.mass = mass;  // Khối lượng được cung cấp khi tạo đối tượng
-    }
-}
-// Options for how objects interact
-// How fast the red square moves
-const movementSpeed = 0.05;
+    container.position = position;
+    app.stage.addChild(container);
 
-// Strength of the impulse push between two objects
-const impulsePower = 5;
+    const base = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
+    const size = 100;
 
-// Test For Hit
-// A basic AABB check between two different squares
-function testForAABB(object1: Sprite, object2: Sprite) {
-    const bounds1 = object1.getBounds();
-    const bounds2 = object2.getBounds();
+    base.width = size;
+    base.height = size;
 
-    return (
-        bounds1.x < bounds2.x + bounds2.width
-        && bounds1.x + bounds1.width > bounds2.x
-        && bounds1.y < bounds2.y + bounds2.height
-        && bounds1.y + bounds1.height > bounds2.y
-    );
-}
+    const bottom = Sprite.from('https://pixijs.com/assets/bg_rotate.jpg');
+
+    bottom.width = size;
+    bottom.height = size;
+
+    const mask = new Graphics();
+
+    mask.position.set(size / 2, size / 2);
+    base.mask = mask;
+    //
+
+    container.addChild(bottom);
+    container.addChild(base);
+    container.addChild(mask);
+
+    let phase = 0;
+
+    return (delta: number) => {
+        // Update phase
+        phase += delta / 60;
+        phase %= Math.PI * 2;
+
+        // Calculate target point.
+        const x = Math.cos(phase - Math.PI / 2) * size;
+        const y = Math.sin(phase - Math.PI / 2) * size;
+
+        const segments = [
+            [-size / 2, -size / 2, size / 2, -size / 2], // top segment
+            [size / 2, -size / 2, size / 2, size / 2], // right
+            [-size / 2, size / 2, size / 2, size / 2], // bottom
+            [-size / 2, -size / 2, -size / 2, size / 2], // left
+        ];
+
+        // Find the intersecting segment.
+        let intersection = null;
+        let winding = 0;
+
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            const hit = intersect(0, 0, x, y, segment[0], segment[1], segment[2], segment[3]);
+
+            if (hit) {
+                intersection = hit;
+                if (i === 0) winding = hit.x > 0 ? 0 : 4;
+                else winding = i;
+                break;
+            }
+        }
+
+        const corners = [
+            size / 2,
+            -size / 2, // Top right
+            size / 2,
+            size / 2, // Bottom right
+            -size / 2,
+            size / 2, // Bottom left
+            -size / 2,
+            -size / 2, // Top left,
+            0,
+            -size / 2, // End point
+        ];
+
+        // Redraw mask
+        mask.clear();
+        mask.lineStyle(2, 0xff0000, 1);
+        mask.beginFill(0xff0000, 1);
+        mask.moveTo(0, -size / 2);
+        mask.lineTo(0, 0);
+
+        if (intersection)
+            mask.lineTo(intersection.x, intersection.y);
+
+        // fill the corners
+        for (let i = winding; i < corners.length / 2; i++) {
+            mask.lineTo(corners[i * 2], corners[i * 2 + 1]);
+        }
+        mask.endFill();
+    };
+};
 
 
-// Calculates the results of a collision, allowing us to give an impulse that
-// shoves objects apart
-function collisionResponse(object1: PhysicsSprite, object2: PhysicsSprite) {
-    if (!object1 || !object2) {
-        return new Point(0);
-    }
+/* -----------------------
+ Spinner 2. Scaling balls.
+ ---------------------- */
+const generateSpinner2 = (position: Point) => {
+    const container = new Container();
 
-    const vCollision = new Point(object2.x - object1.x, object2.y - object1.y);
+    container.position = position;
+    app.stage.addChild(container);
 
-    const distance = Math.sqrt(
-        (object2.x - object1.x) * (object2.x - object1.x) + (object2.y - object1.y) * (object2.y - object1.y),
-    );
+    const size = 100;
+    const ballAmount = 7;
+    const balls: Sprite[] = [];
 
-    const vCollisionNorm = new Point(vCollision.x / distance, vCollision.y / distance);
+    for (let i = 0; i < ballAmount; i++) {
+        const ball = Sprite.from('https://pixijs.com/assets/circle.png');
 
-    const vRelativeVelocity = new Point(
-        object1.acceleration.x - object2.acceleration.x,
-        object1.acceleration.y - object2.acceleration.y,
-    );
-
-    const speed = vRelativeVelocity.x * vCollisionNorm.x + vRelativeVelocity.y * vCollisionNorm.y;
-
-    const impulse = (impulsePower * speed) / (object1.mass + object2.mass);
-
-    return new Point(impulse * vCollisionNorm.x, impulse * vCollisionNorm.y);
-}
-
-// Calculate the distance between two given points
-//Math.hypot(a, b) là một phương thức tiện dụng trong JavaScript, 
-// tính toán khoảng cách Euclid giữa hai điểm (a, b). Nó thực hiện công thức:
-//Math.sqrt(a*a + b*b)
-//trong đó a và b là sự chênh lệch giữa các tọa độ x và y của hai điểm.
-function distanceBetweenTwoPoints(p1: { x: number, y: number }, p2: Point) {
-    const a = p1.x - p2.x;
-    const b = p1.y - p2.y;
-
-    return Math.hypot(a, b);
-}
-
-// The green square we will knock about
-const greenSquare = new PhysicsSprite(Texture.WHITE, 3);
-
-greenSquare.position.set((app.screen.width - 100) / 2, (app.screen.height - 100) / 2);
-greenSquare.width = 100;
-greenSquare.height = 100;
-greenSquare.tint = 0x00ff00;
-
-
-
-// The square you move around
-const redSquare = new PhysicsSprite(Texture.WHITE, 1);
-
-redSquare.position.set(0, 0);
-redSquare.width = 100;
-redSquare.height = 100;
-redSquare.tint = 0xff0000;
-
-const mouseCoords = { x: 0, y: 0 };
-
-app.stage.eventMode = 'static';
-app.stage.hitArea = app.screen;
-app.stage.on('mousemove', (event) => {
-    mouseCoords.x = event.global.x;
-    mouseCoords.y = event.global.y;
-});
-app.stage.addChild(redSquare, greenSquare);
-app.ticker.add((delta) => {
-    // Applied deacceleration for both squares, done by reducing the
-    // acceleration by 0.01% of the acceleration every loop
-    redSquare.acceleration.set(redSquare.acceleration.x * 0.99, redSquare.acceleration.y * 0.99);
-    greenSquare.acceleration.set(greenSquare.acceleration.x * 0.99, greenSquare.acceleration.y * 0.99);
-
-    // Check whether the green square ever moves off the screen
-    // If so, reverse acceleration in that direction
-    if (greenSquare.x < 0 || greenSquare.x > app.screen.width - 100) {
-        greenSquare.acceleration.x = -greenSquare.acceleration.x;
-    }
-
-    if (greenSquare.y < 0 || greenSquare.y > app.screen.height - 100) {
-        greenSquare.acceleration.y = -greenSquare.acceleration.y;
-    }
-
-    // If the green square pops out of the cordon, it pops back into the
-    // middle
-    if (
-        greenSquare.x < -30
-        || greenSquare.x > app.screen.width + 30
-        || greenSquare.y < -30
-        || greenSquare.y > app.screen.height + 30
-    ) {
-        greenSquare.position.set((app.screen.width - 100) / 2, (app.screen.height - 100) / 2);
-    }
-
-    // If the mouse is off screen, then don't update any further
-    if (app.screen.width > mouseCoords.x || mouseCoords.x > 0 || app.screen.height > mouseCoords.y || mouseCoords.y > 0) {
-        // Get the red square's center point
-        const redSquareCenterPosition = new Point(
-            redSquare.x + redSquare.width * 0.5,
-            redSquare.y + redSquare.height * 0.5,
+        ball.anchor.set(0.5);
+        container.addChild(ball);
+        ball.position.set(
+            size / 2 + (Math.cos((i / ballAmount) * Math.PI * 2) * size) / 3,
+            size / 2 + (Math.sin((i / ballAmount) * Math.PI * 2) * size) / 3,
         );
-
-        // Calculate the direction vector between the mouse pointer and
-        // the red square
-        const toMouseDirection = new Point(
-            mouseCoords.x - redSquareCenterPosition.x,
-            mouseCoords.y - redSquareCenterPosition.y,
-        );
-
-        // Use the above to figure out the angle that direction has
-        const angleToMouse = Math.atan2(toMouseDirection.y, toMouseDirection.x);
-
-        // Figure out the speed the square should be travelling by, as a
-        // function of how far away from the mouse pointer the red square is
-        const distMouseRedSquare = distanceBetweenTwoPoints(mouseCoords, redSquareCenterPosition);
-        const redSpeed = distMouseRedSquare * movementSpeed;
-
-        // Calculate the acceleration of the red square
-        redSquare.acceleration.set(Math.cos(angleToMouse) * redSpeed, Math.sin(angleToMouse) * redSpeed);
+        balls.push(ball);
     }
 
-    if (testForAABB(greenSquare, redSquare)) {
-        // Calculate the changes in acceleration that should be made between
-        // each square as a result of the collision
-        const collisionPush = collisionResponse(greenSquare, redSquare);
-        // Set the changes in acceleration for both squares
+    let phase = 0;
 
-        redSquare.acceleration.set(collisionPush.x * greenSquare.mass, collisionPush.y * greenSquare.mass);
-        greenSquare.acceleration.set(-(collisionPush.x * redSquare.mass), -(collisionPush.y * redSquare.mass));
-    }
+    return (delta: number) => {
+        // Update phase
+        phase += delta / 60;
+        phase %= Math.PI * 2;
 
-    greenSquare.x += greenSquare.acceleration.x * delta;
-    greenSquare.y += greenSquare.acceleration.y * delta;
+        // Update ball scales
+        balls.forEach((b, i) => {
+            const sin = Math.sin((i / ballAmount) * Math.PI - phase);
+            // Multiply sin with itself to get more steeper edge.
 
-    redSquare.x += redSquare.acceleration.x * delta;
-    redSquare.y += redSquare.acceleration.y * delta;
+            b.scale.set(Math.abs(sin * sin * sin * 0.5) + 0.5);
+        });
+    };
+};
+
+/* ---------------------
+ Spinner 3. Radial mask.
+ -------------------- */
+const generateSpinner3 = (position: Point) => {
+    const container = new Container();
+
+    container.position = position;
+    app.stage.addChild(container);
+
+    const base = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
+    const size = 100;
+
+    base.width = size;
+    base.height = size;
+
+    const mask = new Graphics();
+
+    mask.position.set(size / 2, size / 2);
+    base.mask = mask;
+
+
+    container.addChild(base);
+    container.addChild(mask);
+
+    let phase = 0;
+
+    return (delta: number) => {
+        // Update phase
+        phase += delta / 60;
+        phase %= Math.PI * 2;
+
+        const angleStart = 0 - Math.PI / 2;
+        const angle = phase + angleStart;
+        const radius = 50;
+
+        const x1 = Math.cos(angleStart) * radius;
+        const y1 = Math.sin(angleStart) * radius;
+
+        // Redraw mask
+        mask.clear();
+        mask.lineStyle(2, 0xff0000, 1);
+        mask.beginFill(0xff0000, 1);
+        mask.moveTo(0, 0);
+        mask.lineTo(x1, y1);
+        mask.arc(0, 0, radius, angleStart, angle, false);
+        mask.lineTo(0, 0);
+        mask.endFill();
+    };
+};
+
+/* ---------------------------------
+ Spinner 4. Rounded rectangle edges.
+ ------------------------------- */
+// const generateSpinner4 = (position:Point) =>
+// {
+//     const container = new Container();
+
+//     container.position = position;
+//     app.stage.addChild(container);
+
+//     const size = 100;
+//     const arcRadius = 15;
+
+//     const base = Sprite.from('https://pixijs.com/assets/bg_scene_rotate.jpg');
+
+//     base.width = size;
+//     base.height = size;
+
+//     // For better performance having assets prerounded would be better than masking.
+//     const roundingMask = new Graphics();
+
+//     roundingMask.beginFill(0, 1);
+//     roundingMask.lineStyle(1, 0xff0000, 1);
+//     roundingMask.drawRoundedRect(0, 0, size, size, arcRadius);
+//     roundingMask.endFill();
+//     base.mask = roundingMask;
+
+//     // The edge could be replaced with image as well.
+//     const lineSize = 5;
+//     const edge = new Graphics();
+
+//     edge.lineStyle(lineSize, 0xff0000, 1);
+//     edge.drawRoundedRect(0, 0, size, size, arcRadius);
+//     edge.endFill();
+
+//     // Mask in this example works basically the same way as in example 1.
+//     // Except it is reversed and calculates the mask in straight lines in edges.
+//     const mask = new Graphics();
+
+//     mask.position.set(size / 2, size / 2);
+//     edge.mask = mask;
+
+//     container.addChild(base);
+//     container.addChild(roundingMask);
+//     container.addChild(edge);
+//     container.addChild(mask);
+
+//     let phase = 0;
+
+//     return (delta:number) =>
+//     {
+//         // Update phase
+//         phase += delta / 160;
+//         phase %= Math.PI * 2;
+
+//         // Calculate target point.
+//         const x = Math.cos(phase - Math.PI / 2) * size;
+//         const y = Math.sin(phase - Math.PI / 2) * size;
+//         // Line segments
+//         const segments = [
+//             [-size / 2 + lineSize, -size / 2 + lineSize, size / 2 - lineSize, -size / 2 + lineSize], // top segment
+//             [size / 2 - lineSize, -size / 2 + lineSize, size / 2 - lineSize, size / 2 - lineSize], // right
+//             [-size / 2 + lineSize, size / 2 - lineSize, size / 2 - lineSize, size / 2 - lineSize], // bottom
+//             [-size / 2 + lineSize, -size / 2 + lineSize, -size / 2 + lineSize, size / 2 - lineSize], // left
+//         ];
+//         // To which dir should mask continue at each segment
+//         let outDir = [
+//             [0, -1],
+//             [1, 0],
+//             [0, 1],
+//             [-1, 0],
+//         ];
+
+//         // Find the intersecting segment.
+//         let intersection = null;
+//         let winding = 0;
+//         // What direction should the line continue after hit has been found before hitting the line size
+
+//         for (let i = 0; i < segments.length; i++)
+//         {
+//             const segment = segments[i];
+//             const hit = intersect(0, 0, x, y, segment[0], segment[1], segment[2], segment[3]);
+
+//             if (hit)
+//             {
+//                 intersection = hit;
+//                 if (i === 0) winding = hit.x < 0 ? 0 : 4;
+//                 else winding = 4 - i;
+//                 outDir = outDir[i];
+//                 break;
+//             }
+//         }
+
+//         const corners = [
+//             -size / 2 - lineSize,
+//             -size / 2 - lineSize, // Top left,
+//             -size / 2 - lineSize,
+//             size / 2 + lineSize, // Bottom left
+//             size / 2 + lineSize,
+//             size / 2 + lineSize, // Bottom right
+//             size / 2 + lineSize,
+//             -size / 2 - lineSize, // Top right
+//         ];
+
+//         // Redraw mask
+//         mask.clear();
+//         mask.lineStyle(2, 0x00ff00, 1);
+//         mask.beginFill(0xff0000, 1);
+
+//         mask.moveTo(0, 0);
+//         mask.moveTo(0, -size / 2 - lineSize);
+
+//         // fill the corners
+//         for (let i = 0; i < winding; i++)
+//         {
+//             mask.lineTo(corners[i * 2], corners[i * 2 + 1]);
+//         }
+
+//         mask.lineTo(intersection.x + outDir[0] * lineSize * 2, intersection.y + outDir[1] * lineSize * 2);
+//         mask.lineTo(intersection.x, intersection.y);
+//         mask.lineTo(0, 0);
+
+//         mask.endFill();
+//     };
+// };
+
+/* ---------------------
+ Spinner 5. Rounded rectangle fixed length spinner by jonlepage
+ -------------------- */
+const generateSpinner5 = (position: Point) => {
+    const container = new Container();
+
+    container.position = position;
+    app.stage.addChild(container);
+
+    const halfCircle = new Graphics();
+
+    halfCircle.beginFill(0xff0000);
+    halfCircle.lineStyle(2, 0xffffff);
+    halfCircle.arc(0, 0, 100, 0, Math.PI);
+    halfCircle.endFill();
+    halfCircle.position.set(50, 50);
+
+    const rectangle = new Graphics();
+
+    rectangle.lineStyle(2, 0xffffff, 1);
+    rectangle.drawRoundedRect(0, 0, 100, 100, 16);
+    rectangle.endFill();
+    rectangle.mask = halfCircle;
+
+    container.addChild(rectangle);
+    container.addChild(halfCircle);
+
+    let phase = 0;
+
+    return (delta: number) => {
+        // Update phase
+        phase += delta / 6;
+        phase %= Math.PI * 2;
+
+        halfCircle.rotation = phase;
+    };
+};
+
+const onTick = [
+    generateSpinner1(new Point(50, 50)),
+    generateSpinner2(new Point(160, 50)),
+    generateSpinner3(new Point(270, 50)),
+    //generateSpinner4(new Point(380, 50)),
+    generateSpinner5(new Point(490, 50)),
+];
+
+// Listen for animate update
+app.ticker.add((delta: number) => {
+    // Call tick handling for each spinner.
+    onTick.forEach((cb) => {
+        cb(delta);
+    });
 });
+
+
+
+function intersect(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number) {
+    // Check if none of the lines are of length 0
+    if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
+        return false;
+    }
+
+    const denominator = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+
+    // Lines are parallel
+    if (denominator === 0) {
+        return false;
+    }
+
+    const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+    const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
+
+    // is the intersection along the segments
+    if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
+        return false;
+    }
+
+    // Return a object with the x and y coordinates of the intersection
+    const x = x1 + ua * (x2 - x1);
+    const y = y1 + ua * (y2 - y1);
+
+    return { x, y };
+}
