@@ -1,87 +1,40 @@
 import { Application, Container, DisplayObject, EventBoundary, FederatedPointerEvent, Graphics, Matrix, Text, BitmapFont, BitmapText, Rectangle, Sprite, SCALE_MODES, Point, Assets, filters, BlurFilter, ColorMatrixFilter, Texture, DisplacementFilter, WRAP_MODES, Filter, MIPMAP_MODES, SimpleRope, Geometry, Shader, Mesh, Program, TYPES, RenderTexture, groupD8, Resource, BaseTexture, Renderer } from "pixi.js";
 
+const canvas = document.createElement('canvas');
+const view = canvas.transferControlToOffscreen();
 
-const app = new Application({ width: 1024, height: 768 });
-document.body.appendChild(app.view as HTMLCanvasElement);
+const app = new Application({ view, background: 0x1099bb, resizeTo: window });
+
+document.body.appendChild(canvas);
 //---------------------------------------------------------
-async function init() {
-    // manifest example
-    const manifestExample = {
-        bundles: [
-            {
-                name: 'load-screen',
-                assets: [
-                    {
-                        name: 'flowerTop',
-                        srcs: 'https://pixijs.com/assets/flowerTop.png',
-                    },
-                ],
-            },
-            {
-                name: 'game-screen',
-                assets: [
-                    {
-                        name: 'eggHead',
-                        srcs: 'https://pixijs.com/assets/eggHead.png',
-                    },
-                ],
-            },
-        ],
-    };
+const container = new Container();
 
-    await Assets.init({ manifest: manifestExample });
+app.stage.addChild(container);
 
-    // bundles can be loaded in the background too!
-    Assets.backgroundLoadBundle(['load-screen', 'game-screen']);
+// Create a new texture
+const texture = Texture.from('https://pixijs.com/assets/bunny.png');
 
-    makeLoadScreen();
+// Create a 5x5 grid of bunnies
+for (let i = 0; i < 25; i++) {
+    const bunny = new Sprite(texture);
+
+    bunny.anchor.set(0.5);
+    bunny.x = (i % 5) * 40;
+    bunny.y = Math.floor(i / 5) * 40;
+    container.addChild(bunny);
 }
 
+// Move container to the center
+container.x = app.screen.width / 2;
+container.y = app.screen.height / 2;
 
-async function makeLoadScreen() {
-    // get the assets from the load screen bundle.
-    // If the bundle was already downloaded the promise resolves instantly!
-    const loadScreenAssets = await Assets.loadBundle('load-screen');
+// Center bunny sprite in local container coordinates
+container.pivot.x = container.width / 2;
+container.pivot.y = container.height / 2;
 
-    // create a new Sprite from the resolved loaded texture
-    const goNext = new Sprite(loadScreenAssets.flowerTop);
-
-    goNext.anchor.set(0.5);
-    goNext.x = app.screen.width / 2;
-    goNext.y = app.screen.height / 2;
-    app.stage.addChild(goNext);
-
-    goNext.eventMode = 'static';
-    goNext.cursor = 'pointer';
-
-    goNext.on('pointertap', async () => {
-        goNext.destroy();
-        makeGameScreen();
-    });
-}
-
-async function makeGameScreen() {
-    // Wait here until you get the assets
-    // If the user spends enough time in the load screen by the time they reach the game screen
-    // the assets are completely loaded and the promise resolves instantly!
-    const loadScreenAssets = await Assets.loadBundle('game-screen');
-
-    // create a new Sprite from the resolved loaded texture
-    const goBack = new Sprite(loadScreenAssets.eggHead);
-
-    goBack.anchor.set(0.5);
-    goBack.x = app.screen.width / 2;
-    goBack.y = app.screen.height / 2;
-    app.stage.addChild(goBack);
-
-    goBack.eventMode = 'static';
-    goBack.cursor = 'pointer';
-
-    goBack.on('pointertap', async () => {
-        goBack.destroy();
-        // The user can go back and the files are already downloaded
-        makeLoadScreen();
-    });
-}
-
-init();
+// Listen for animate update
+app.ticker.add((delta) => {
+    // rotate the container!
+    // use delta to create frame-independent transform
+    container.rotation -= 0.01 * delta;
+});
