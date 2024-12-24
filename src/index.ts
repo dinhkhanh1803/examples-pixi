@@ -41,7 +41,6 @@ const generateSpinner1 = (position: Point) => {
     let phase = 0;
 
     return (delta: number) => {
-        // Update phase
         phase += delta / 60;
         phase %= Math.PI * 2;
 
