@@ -367,7 +367,6 @@ const onTick = [
     generateSpinner5(new Point(490, 50)),
 ];
 
-// Listen for animate update
 app.ticker.add((delta: number) => {
     // Call tick handling for each spinner.
     onTick.forEach((cb) => {
